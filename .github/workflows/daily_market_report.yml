@@ -1,0 +1,46 @@
+name: Lanora Gold Daily Technical Report Automation
+
+on:
+  schedule:
+    # Runs at 04:00 UTC every Monday to Friday (08:00 AM GST / Gulf Standard Time)
+    - cron: '0 4 * * 1-5'
+  workflow_dispatch:
+    # Allows manual trigger anytime from GitHub Actions tab
+
+jobs:
+  generate_and_dispatch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install reportlab urllib3 requests
+
+      - name: Execute Daily Morning Market Research & Report Generation
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+          WHATSAPP_WEBHOOK_URL: ${{ secrets.WHATSAPP_WEBHOOK_URL }}
+          WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
+        run: |
+          python scheduler.py
+
+      - name: Upload Report PDF as Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lanora-Gold-Daily-Technical-Report
+          path: "*.pdf"
+          retention-days: 30
