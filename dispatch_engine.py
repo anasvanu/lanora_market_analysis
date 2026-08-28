@@ -2,6 +2,7 @@
 """
 Lanora Gold Trading LLC — Production Multi-Channel Dispatch Engine
 Supports SMTP Email sending and WhatsApp API / Webhook delivery with GitHub Secrets support.
+Compatible with Green API, UltraMsg, Twilio, and custom webhooks.
 """
 
 import sys
@@ -17,12 +18,12 @@ from market_engine import get_market_data
 DEFAULT_EMAIL = os.getenv("RECIPIENT_EMAIL", "anasvanu@gmail.com")
 DEFAULT_WHATSAPP = os.getenv("WHATSAPP_PHONE", "7012926066")
 
-def build_whatsapp_payload(data: dict, pdf_filepath: str):
+def build_whatsapp_summary_text(data: dict) -> str:
     gold = data['gold']
     silver = data['silver']
     date_str = data['report_metadata']['date']
     
-    msg = (
+    return (
         f"🏆 *LANORA GOLD TRADING LLC — DAILY TECHNICAL REPORT*\n"
         f"📅 Date: {date_str} | 🕗 08:00 AM GST (Dubai)\n\n"
         f"📊 *SPOT GOLD (XAU/USD)*\n"
@@ -37,23 +38,14 @@ def build_whatsapp_payload(data: dict, pdf_filepath: str):
         f"• Support 1 (S1): ${silver['pivots']['S1']:.3f} | Resistance 1 (R1): ${silver['pivots']['R1']:.3f}\n\n"
         f"📌 *Official Contact Desk*\n"
         f"📍 Shop No. 18, Nasser Lootah Bldg., Al Ras, Dubai\n"
-        f"📞 04-3215916 / 0505395916 | ✉️ {data['company']['email']}\n\n"
-        f"📎 Attached: Daily 5-Page Technical PDF Deck ({os.path.basename(pdf_filepath)})"
+        f"📞 04-3215916 / 0505395916 | ✉️ {data['company']['email']}"
     )
-
-    return {
-        "to": DEFAULT_WHATSAPP,
-        "message": msg,
-        "attachment_path": pdf_filepath,
-        "status": "DISPATCH_READY"
-    }
 
 def send_email_report(pdf_filepath: str, to_email: str = DEFAULT_EMAIL):
     data = get_market_data()
     date_str = data['report_metadata']['date']
     subject = f"Lanora Gold Trading - Daily Technical Report [{date_str}]"
 
-    # Read SMTP Config from environment (GitHub Secrets)
     smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
     smtp_user = os.getenv("SMTP_USER")
@@ -95,7 +87,6 @@ def send_email_report(pdf_filepath: str, to_email: str = DEFAULT_EMAIL):
 
     print(f"📧 [EMAIL DISPATCH] Recipient: {to_email}")
     print(f"   Subject: {subject}")
-    print(f"   Attachment: {pdf_filepath}")
 
     if smtp_user and smtp_pass:
         try:
@@ -130,24 +121,51 @@ def send_email_report(pdf_filepath: str, to_email: str = DEFAULT_EMAIL):
 
 def send_whatsapp_report(pdf_filepath: str, phone: str = DEFAULT_WHATSAPP):
     data = get_market_data()
-    payload = build_whatsapp_payload(data, pdf_filepath)
-    
+    summary_text = build_whatsapp_summary_text(data)
     webhook_url = os.getenv("WHATSAPP_WEBHOOK_URL")
 
-    print(f"📱 [WHATSAPP DISPATCH] Target Phone: {phone}")
-    print(f"   Summary Message Length: {len(payload['message'])} chars")
+    # Clean phone number (strip + and spaces)
+    clean_phone = "".join([c for c in phone if c.isdigit()])
+    if len(clean_phone) == 10 and not clean_phone.startswith("91") and not clean_phone.startswith("971"):
+        # Default to UAE 971 or India 91 prefix if needed
+        clean_phone = "91" + clean_phone if phone.startswith("70") or phone.startswith("9") else "971" + clean_phone
+
+    print(f"📱 [WHATSAPP DISPATCH] Target Phone: {clean_phone}")
 
     if webhook_url:
         try:
+            # Format request depending on API provider
+            if "green-api.com" in webhook_url:
+                payload = {
+                    "chatId": f"{clean_phone}@c.us",
+                    "message": summary_text
+                }
+            elif "ultramsg.com" in webhook_url:
+                payload = {
+                    "to": clean_phone,
+                    "body": summary_text
+                }
+            else:
+                payload = {
+                    "to": clean_phone,
+                    "message": summary_text,
+                    "attachment": os.path.basename(pdf_filepath)
+                }
+
             req_data = json.dumps(payload).encode('utf-8')
-            req = urllib.request.Request(webhook_url, data=req_data, headers={'Content-Type': 'application/json'})
+            req = urllib.request.Request(
+                webhook_url,
+                data=req_data,
+                headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'}
+            )
             with urllib.request.urlopen(req, timeout=10) as resp:
-                print(f"✅ WhatsApp Webhook triggered successfully (HTTP {resp.status})!")
-                return {"status": "SENT_WEBHOOK_SUCCESS", "phone": phone}
+                print(f"✅ WhatsApp API message sent successfully (HTTP {resp.status})!")
+                return {"status": "SENT_WEBHOOK_SUCCESS", "phone": clean_phone}
         except Exception as e:
             print(f"⚠️ WhatsApp Webhook Error: {e}. Falling back to simulated log dispatch.")
 
-    return payload
+    print(f"ℹ️ Simulated WhatsApp Summary Message:\n{summary_text}")
+    return {"status": "SENT_SIMULATED", "phone": clean_phone, "message": summary_text}
 
 if __name__ == "__main__":
     pdf_file = sys.argv[1] if len(sys.argv) > 1 else "Lanora_Gold_Daily_Technical_Report.pdf"
