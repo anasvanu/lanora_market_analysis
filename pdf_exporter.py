@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Lanora Gold Trading LLC — PDF Presentation Exporter
-Compiles print-perfect 5-page 16:9 landscape PDF technical reports with H4 Candlestick Charts embedded.
+Lanora Gold Trading LLC — Premium PDF Presentation Exporter
+Compiles print-perfect 5-page 16:9 landscape PDF technical reports.
 """
 
 import sys
@@ -14,320 +14,588 @@ def generate_pdf_report(output_filename="Lanora_Gold_Daily_Technical_Report.pdf"
     print(f"Generating PDF Technical Report: {output_filename}...")
     data = get_market_data()
 
-    # Generate dynamic H4 Technical Graphs for Gold & Silver
+    # Generate dynamic price charts for Gold & Silver
     gold_chart_path = generate_gold_chart(data['gold']['spot'], data['gold']['pivots']['P'], "assets/gold_chart.png")
     silver_chart_path = generate_silver_chart(data['silver']['spot'], data['silver']['pivots']['P'], "assets/silver_chart.png")
 
     try:
-        from reportlab.lib.pagesizes import landscape, A4
+        from reportlab.lib.pagesizes import landscape
         from reportlab.lib import colors
         from reportlab.platypus import (
-            SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak, KeepTogether
+            SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+            Image, PageBreak, HRFlowable
         )
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
-        # 16:9 Widescreen Page Dimensions (11 x 6.1875 inches)
-        PAGE_WIDTH = 11 * inch
-        PAGE_HEIGHT = 6.1875 * inch
+        # ── Page: 16:9 Widescreen (11 × 6.1875 in) ──────────────────────────
+        PW = 11 * inch
+        PH = 6.1875 * inch
+        M  = 0.38 * inch   # uniform margin
 
         doc = SimpleDocTemplate(
             output_filename,
-            pagesize=(PAGE_WIDTH, PAGE_HEIGHT),
-            rightMargin=0.4 * inch,
-            leftMargin=0.4 * inch,
-            topMargin=0.35 * inch,
-            bottomMargin=0.35 * inch
+            pagesize=(PW, PH),
+            rightMargin=M, leftMargin=M,
+            topMargin=M,   bottomMargin=M
         )
 
-        styles = getSampleStyleSheet()
-        
-        NAVY_DARK = colors.HexColor("#060d1d")
-        NAVY_BLUE = colors.HexColor("#0b1930")
-        GOLD_PRIMARY = colors.HexColor("#dfb256")
-        GOLD_ACCENT = colors.HexColor("#b8860b")
-        SLATE_BG = colors.HexColor("#f5f8fc")
-        MUTED_TEXT = colors.HexColor("#5a6e85")
+        # ── Brand Palette ─────────────────────────────────────────────────────
+        NAVY      = colors.HexColor("#060d1d")
+        NAVY_MID  = colors.HexColor("#0b1930")
+        NAVY_CARD = colors.HexColor("#0f2244")
+        GOLD      = colors.HexColor("#dfb256")
+        GOLD_DARK = colors.HexColor("#b8860b")
+        GOLD_PALE = colors.HexColor("#fef9e7")
+        SILVER_C  = colors.HexColor("#c0c9d8")
+        SLATE     = colors.HexColor("#94a3b8")
+        WHITE     = colors.white
+        GREEN_BG  = colors.HexColor("#0d2b1a")
+        GREEN_ACC = colors.HexColor("#22c55e")
+        RED_BG    = colors.HexColor("#2b0d0d")
+        RED_ACC   = colors.HexColor("#ef4444")
+        DIVIDER   = colors.HexColor("#1e3a5f")
 
-        title_style = ParagraphStyle(
-            'TitleStyle',
-            fontName='Helvetica-Bold',
-            fontSize=22,
-            leading=26,
-            textColor=NAVY_BLUE
-        )
+        # ── Typography ────────────────────────────────────────────────────────
+        def style(name, **kw):
+            base = kw.pop("parent", None)
+            p = ParagraphStyle(name, **kw)
+            return p
 
-        gold_title_style = ParagraphStyle(
-            'GoldTitleStyle',
-            fontName='Helvetica-Bold',
-            fontSize=22,
-            leading=26,
-            textColor=GOLD_ACCENT
-        )
+        ST_PAGE_TITLE = style("PageTitle",
+            fontName="Helvetica-Bold", fontSize=17, leading=20,
+            textColor=WHITE, spaceAfter=0)
 
-        subtitle_style = ParagraphStyle(
-            'SubtitleStyle',
-            fontName='Helvetica',
-            fontSize=11,
-            leading=14,
-            textColor=MUTED_TEXT
-        )
+        ST_PAGE_TITLE_GOLD = style("PageTitleGold",
+            fontName="Helvetica-Bold", fontSize=17, leading=20,
+            textColor=GOLD, spaceAfter=0)
 
-        body_style = ParagraphStyle(
-            'BodyStyle',
-            fontName='Helvetica',
-            fontSize=10,
-            leading=14,
-            textColor=NAVY_DARK
-        )
+        ST_SUBTITLE = style("Subtitle",
+            fontName="Helvetica", fontSize=9, leading=12,
+            textColor=SLATE, spaceAfter=0)
 
-        header_badge_style = ParagraphStyle(
-            'HeaderBadge',
-            fontName='Helvetica-Bold',
-            fontSize=8,
-            leading=10,
-            textColor=colors.HexColor("#8c630d"),
-            backColor=colors.HexColor("#fef9e7"),
-            borderColor=GOLD_PRIMARY,
-            borderWidth=1,
-            borderPadding=4,
-            spaceAfter=0
-        )
+        ST_LABEL = style("Label",
+            fontName="Helvetica-Bold", fontSize=7, leading=9,
+            textColor=SLATE, spaceAfter=0, spaceBefore=0)
 
-        logo_path = os.path.abspath("assets/lanora_logo_badge.jpg")
-        gold_img_path = os.path.abspath("assets/gold_1kg_feature.jpg")
-        pamp_img_path = os.path.abspath("assets/pamp_fortuna_feature.jpg")
+        ST_VALUE_BIG = style("ValueBig",
+            fontName="Helvetica-Bold", fontSize=20, leading=24,
+            textColor=WHITE, alignment=TA_CENTER)
+
+        ST_VALUE_GOLD = style("ValueGold",
+            fontName="Helvetica-Bold", fontSize=20, leading=24,
+            textColor=GOLD, alignment=TA_CENTER)
+
+        ST_BODY = style("Body",
+            fontName="Helvetica", fontSize=8.5, leading=12,
+            textColor=WHITE)
+
+        ST_BODY_DARK = style("BodyDark",
+            fontName="Helvetica", fontSize=8.5, leading=12,
+            textColor=NAVY)
+
+        ST_TABLE_HDR = style("TableHdr",
+            fontName="Helvetica-Bold", fontSize=8, leading=10,
+            textColor=WHITE, alignment=TA_CENTER)
+
+        ST_TABLE_CELL = style("TableCell",
+            fontName="Helvetica", fontSize=8, leading=11,
+            textColor=WHITE, alignment=TA_CENTER)
+
+        ST_PIVOT_LBL = style("PivotLbl",
+            fontName="Helvetica-Bold", fontSize=9, leading=11,
+            textColor=SLATE, alignment=TA_LEFT)
+
+        ST_PIVOT_VAL = style("PivotVal",
+            fontName="Helvetica-Bold", fontSize=9, leading=11,
+            textColor=WHITE, alignment=TA_RIGHT)
+
+        ST_CONTACT = style("Contact",
+            fontName="Helvetica", fontSize=8, leading=12,
+            textColor=SILVER_C, alignment=TA_CENTER)
+
+        ST_DISCLAIMER = style("Disclaimer",
+            fontName="Helvetica", fontSize=6.5, leading=9,
+            textColor=SLATE, alignment=TA_CENTER)
+
+        # ── Asset Paths ───────────────────────────────────────────────────────
+        LOGO     = os.path.abspath("assets/lanora_logo_badge.png")
+        GOLD_IMG = os.path.abspath("assets/gold_1kg_feature.jpg")
+        PAMP_IMG = os.path.abspath("assets/pamp_fortuna_feature.jpg")
 
         story = []
+        IW = PW - 2 * M   # inner content width
 
-        def make_header(title_text, badge_text=""):
-            logo_img = Image(logo_path, width=0.6*inch, height=0.6*inch)
-            title_p = Paragraph(f"<b>{title_text}</b>", title_style)
-            if badge_text:
-                badge_p = Paragraph(f"<b>{badge_text}</b>", header_badge_style)
-                title_table = Table([[title_p, badge_p, logo_img]], colWidths=[6.5*inch, 2.5*inch, 1*inch])
+        # ══════════════════════════════════════════════════════════════════════
+        # SHARED HELPER: Premium Dark Header Bar
+        # ══════════════════════════════════════════════════════════════════════
+        def make_header(title, badge=None):
+            logo_img = Image(LOGO, width=0.65*inch, height=0.65*inch)
+            title_p  = Paragraph(f"<b>{title}</b>", ST_PAGE_TITLE)
+
+            if badge:
+                badge_p = Paragraph(
+                    f"<b>{badge}</b>",
+                    style("Badge",
+                          fontName="Helvetica-Bold", fontSize=7, leading=9,
+                          textColor=GOLD_DARK,
+                          backColor=GOLD_PALE,
+                          borderPadding=(3,6,3,6)))
+                cols = [IW - 1.2*inch - 1.3*inch, 1.2*inch, 1.3*inch]
+                cells = [[title_p, badge_p, logo_img]]
             else:
-                title_table = Table([[title_p, "", logo_img]], colWidths=[7.5*inch, 1.5*inch, 1*inch])
-            
-            title_table.setStyle(TableStyle([
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('ALIGN', (2, 0), (2, 0), 'RIGHT'),
+                cols = [IW - 1.3*inch, 0.5*inch, 1.3*inch]
+                cells = [[title_p, "", logo_img]]
+
+            hdr = Table(cells, colWidths=cols)
+            hdr.setStyle(TableStyle([
+                ("VALIGN",  (0,0), (-1,-1), "MIDDLE"),
+                ("ALIGN",   (-1,0), (-1,0),  "RIGHT"),
+                ("ALIGN",   (-2,0), (-2,0),  "CENTER"),
+                ("LEFTPADDING",  (0,0), (0,0), 0),
+                ("RIGHTPADDING", (-1,0), (-1,0), 0),
+                ("TOPPADDING",   (0,0), (-1,-1), 0),
+                ("BOTTOMPADDING",(0,0), (-1,-1), 0),
             ]))
-            return title_table
+            return [hdr, Spacer(1, 4),
+                    HRFlowable(width=IW, thickness=1.5, color=GOLD, spaceAfter=6)]
 
-        # ---------------- SLIDE 1: COVER PAGE ----------------
-        story.append(make_header("Precious Metals Technical Report"))
-        story.append(Paragraph("Daily Pivot Points, Support/Resistance & Trade Strategies", subtitle_style))
-        story.append(Spacer(1, 15))
-
-        meta_content = [
-            [Paragraph("<b>FIRM NAME</b>", subtitle_style), Paragraph("<b>REPORT DATE</b>", subtitle_style)],
-            [Paragraph(f"<b>{data['company']['name']}</b>", body_style), Paragraph(f"<b>{data['report_metadata']['date']}</b>", body_style)],
-            [Spacer(1, 8), Spacer(1, 8)],
-            [Paragraph("<b>LOCATION</b>", subtitle_style), Paragraph("<b>TRADING DESK</b>", subtitle_style)],
-            [Paragraph(f"<b>{data['company']['location']}</b>", body_style), Paragraph("<b>Al Ras, Gold Center</b>", body_style)]
-        ]
-        meta_table = Table(meta_content, colWidths=[2.2*inch, 2.2*inch])
-        meta_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#eef4fc")),
-            ('PADDING', (0, 0), (-1, -1), 8),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#d0e1f9")),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-
-        gold_img = Image(gold_img_path, width=4.2*inch, height=2.8*inch)
-        right_box = [
-            [gold_img],
-            [Paragraph("<font color='#dfb256'><b>Hold Real Value In Your Hands</b></font>", body_style)],
-            [Paragraph('"Pure value. Timeless Power." — Official 1 Kilo Fine Gold 999.9 physical bullion technical research for Dubai market desks.', ParagraphStyle('W', parent=body_style, textColor=colors.white, fontSize=8))],
-            [Paragraph(f"<font color='#94a3b8'>Gold Spot Reference</font> <font color='#dfb256'><b>${data['gold']['spot']:.2f}</b></font>", body_style)]
-        ]
-        right_table = Table(right_box, colWidths=[4.4*inch])
-        right_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), NAVY_BLUE),
-            ('PADDING', (0, 0), (-1, -1), 6),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-
-        slide1_grid = Table([[meta_table, right_table]], colWidths=[4.8*inch, 5.2*inch])
-        slide1_grid.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        story.append(slide1_grid)
-        story.append(PageBreak())
-
-        # ---------------- SLIDE 2: MACROECONOMIC CALENDAR ----------------
-        story.append(make_header("Macro Economic Calendar", "DUBAI TIME (GMT+4)"))
-        story.append(Paragraph("Key macroeconomic releases scheduled for today impacting USD volatility and precious metals spot pricing:", subtitle_style))
+        # ══════════════════════════════════════════════════════════════════════
+        # SLIDE 1 — COVER PAGE
+        # ══════════════════════════════════════════════════════════════════════
+        story += make_header("Precious Metals Daily Technical Report")
+        story.append(Paragraph(
+            "Floor Pivot Point Analysis · Support &amp; Resistance Levels · Intraday Trade Strategy",
+            ST_SUBTITLE))
         story.append(Spacer(1, 10))
 
-        macro_rows = [["Time", "Cur.", "Economic Event", "Forecast", "Previous"]]
+        co   = data['company']
+        meta = data['report_metadata']
+
+        # --- LEFT: Info cards ---
+        def info_card(lbl, val, lbl_color=SLATE, val_color=WHITE):
+            return Table(
+                [[Paragraph(lbl, style("IL", fontName="Helvetica-Bold", fontSize=6.5,
+                                       leading=8, textColor=lbl_color))],
+                 [Paragraph(f"<b>{val}</b>", style("IV", fontName="Helvetica-Bold",
+                                                    fontSize=9.5, leading=12, textColor=val_color))]],
+                colWidths=[2.1*inch])
+
+        card_table = Table([
+            [info_card("FIRM",    co['name']),
+             info_card("DATE",    meta['date']),
+             info_card("GOLD SPOT", f"${data['gold']['spot']:.2f}", val_color=GOLD),
+             info_card("SILVER SPOT", f"${data['silver']['spot']:.3f}", val_color=SILVER_C)],
+        ], colWidths=[2.1*inch]*4)
+        card_table.setStyle(TableStyle([
+            ("BACKGROUND",  (0,0), (-1,-1), NAVY_CARD),
+            ("BOX",         (0,0), (-1,-1), 1,   DIVIDER),
+            ("INNERGRID",   (0,0), (-1,-1), 0.5, DIVIDER),
+            ("PADDING",     (0,0), (-1,-1), 10),
+            ("VALIGN",      (0,0), (-1,-1), "MIDDLE"),
+            ("LINEABOVE",   (0,0), (-1,0), 2, GOLD),
+        ]))
+
+        # --- RIGHT: Feature image panel ---
+        cover_img = Image(GOLD_IMG, width=4.5*inch, height=2.4*inch)
+        tagline = Paragraph(
+            "<font color='#dfb256'><b>Hold Real Value In Your Hands</b></font><br/>"
+            "<font color='#94a3b8'>Pure Value. Timeless Power.</font>",
+            style("Tag", fontName="Helvetica", fontSize=9, leading=14,
+                  textColor=WHITE, alignment=TA_CENTER))
+        subtitle_cover = Paragraph(
+            f"Lanora Gold Trading LLC · Al Ras, Dubai, U.A.E. · {meta['execution_time']}",
+            style("SC", fontName="Helvetica", fontSize=7.5, leading=10,
+                  textColor=SLATE, alignment=TA_CENTER))
+
+        right_panel = Table([
+            [cover_img],
+            [tagline],
+            [subtitle_cover],
+        ], colWidths=[4.6*inch])
+        right_panel.setStyle(TableStyle([
+            ("BACKGROUND",  (0,0), (-1,-1), NAVY_CARD),
+            ("BOX",         (0,0), (-1,-1), 1, DIVIDER),
+            ("LINEABOVE",   (0,0), (-1,0), 2, GOLD),
+            ("ALIGN",       (0,0), (-1,-1), "CENTER"),
+            ("VALIGN",      (0,0), (-1,-1), "MIDDLE"),
+            ("PADDING",     (0,0), (-1,-1), 8),
+        ]))
+
+        # --- Location / Contact strip ---
+        contact_strip = Table([[
+            Paragraph("📍 Shop No. 18, Nasser Lootah Bldg., Gold Center, Al Ras, Dubai, U.A.E.",
+                      style("CS", fontName="Helvetica", fontSize=7.5, leading=10, textColor=SLATE)),
+            Paragraph("📞 04-3215916 / 0505395916",
+                      style("CS2", fontName="Helvetica", fontSize=7.5, leading=10,
+                             textColor=SLATE, alignment=TA_CENTER)),
+            Paragraph("✉ lanoragoldtrading@gmail.com  ·  @lanoragoldtrading",
+                      style("CS3", fontName="Helvetica", fontSize=7.5, leading=10,
+                             textColor=SLATE, alignment=TA_RIGHT)),
+        ]], colWidths=[3.5*inch, 2.5*inch, 4.3*inch])
+        contact_strip.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,-1), NAVY_MID),
+            ("PADDING",    (0,0), (-1,-1), 6),
+            ("TOPLINE",    (0,0), (-1,-1), 1, DIVIDER),
+        ]))
+
+        slide1 = Table([[card_table, right_panel]], colWidths=[5.6*inch, 4.6*inch])
+        slide1.setStyle(TableStyle([
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("LEFTPADDING",  (1,0), (1,0), 8),
+        ]))
+        story.append(slide1)
+        story.append(Spacer(1, 8))
+        story.append(contact_strip)
+        story.append(PageBreak())
+
+        # ══════════════════════════════════════════════════════════════════════
+        # SLIDE 2 — MACROECONOMIC CALENDAR
+        # ══════════════════════════════════════════════════════════════════════
+        story += make_header("Macroeconomic Calendar", "DUBAI TIME (GMT+4)")
+        story.append(Paragraph(
+            "High-impact economic releases scheduled today affecting USD volatility and precious metals pricing:",
+            ST_SUBTITLE))
+        story.append(Spacer(1, 8))
+
+        # Calendar table
+        cal_rows = [[
+            Paragraph("TIME",   ST_TABLE_HDR),
+            Paragraph("CURR.",  ST_TABLE_HDR),
+            Paragraph("EVENT",  ST_TABLE_HDR),
+            Paragraph("FORECAST", ST_TABLE_HDR),
+            Paragraph("PREVIOUS", ST_TABLE_HDR),
+        ]]
         for row in data['macro_calendar']:
-            macro_rows.append([row['time'], row['currency'], row['event'], row['forecast'], row['previous']])
-        
-        t_macro = Table(macro_rows, colWidths=[1.1*inch, 0.7*inch, 2.7*inch, 1*inch, 1*inch])
-        t_macro.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY_BLUE),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('PADDING', (0, 0), (-1, -1), 6),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+            cal_rows.append([
+                Paragraph(row['time'],     ST_TABLE_CELL),
+                Paragraph(row['currency'], ST_TABLE_CELL),
+                Paragraph(row['event'],    style("Ev", fontName="Helvetica", fontSize=8,
+                                                  leading=11, textColor=WHITE, alignment=TA_LEFT)),
+                Paragraph(row['forecast'], ST_TABLE_CELL),
+                Paragraph(row['previous'], ST_TABLE_CELL),
+            ])
+
+        t_cal = Table(cal_rows, colWidths=[1.0*inch, 0.65*inch, 3.4*inch, 1.1*inch, 1.1*inch])
+        row_bg = [NAVY_CARD, NAVY_MID]
+        t_cal.setStyle(TableStyle([
+            ("BACKGROUND",  (0,0), (-1,0), NAVY),
+            ("LINEBELOW",   (0,0), (-1,0), 1.5, GOLD),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), row_bg),
+            ("GRID",        (0,0), (-1,-1), 0.3, DIVIDER),
+            ("PADDING",     (0,0), (-1,-1), 7),
+            ("VALIGN",      (0,0), (-1,-1), "MIDDLE"),
+            ("BOX",         (0,0), (-1,-1), 1, DIVIDER),
         ]))
 
-        pamp_img = Image(pamp_img_path, width=3.4*inch, height=3.4*inch)
-        slide2_grid = Table([[t_macro, pamp_img]], colWidths=[6.8*inch, 3.4*inch])
-        slide2_grid.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE')]))
-        story.append(slide2_grid)
+        # PAMP image
+        pamp_img = Image(PAMP_IMG, width=3.0*inch, height=3.4*inch)
+        pamp_caption = Paragraph(
+            "<font color='#dfb256'><b>PAMP Suisse Fortuna</b></font><br/>"
+            "<font color='#94a3b8'>Official Fine Gold Bullion 999.9</font>",
+            style("PC", fontName="Helvetica", fontSize=8, leading=11,
+                  textColor=WHITE, alignment=TA_CENTER))
+        pamp_panel = Table([[pamp_img], [pamp_caption]], colWidths=[3.2*inch])
+        pamp_panel.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,-1), NAVY_CARD),
+            ("BOX",        (0,0), (-1,-1), 1, DIVIDER),
+            ("ALIGN",      (0,0), (-1,-1), "CENTER"),
+            ("VALIGN",     (0,0), (-1,-1), "MIDDLE"),
+            ("PADDING",    (0,0), (-1,-1), 8),
+            ("LINEABOVE",  (0,0), (-1,0), 2, GOLD),
+        ]))
+
+        slide2 = Table([[t_cal, pamp_panel]], colWidths=[7.1*inch, 3.1*inch])
+        slide2.setStyle(TableStyle([
+            ("VALIGN",       (0,0), (-1,-1), "TOP"),
+            ("LEFTPADDING",  (1,0), (1,0), 10),
+        ]))
+        story.append(slide2)
         story.append(PageBreak())
 
-        # ---------------- SLIDE 3: SPOT GOLD TECHNICAL MATRIX ----------------
-        story.append(make_header("Spot Gold (XAU/USD) Technical Analysis", "H4 PRICE GRAPH"))
-        story.append(Spacer(1, 10))
+        # ══════════════════════════════════════════════════════════════════════
+        # SHARED: Pivot matrix helper
+        # ══════════════════════════════════════════════════════════════════════
+        def pivot_row(lbl, val, row_bg_color, highlight=False):
+            lbl_style = style("PL", fontName="Helvetica-Bold", fontSize=9, leading=11,
+                               textColor=GOLD if highlight else SLATE, alignment=TA_LEFT)
+            val_style = style("PV", fontName="Helvetica-Bold", fontSize=9, leading=11,
+                               textColor=GOLD if highlight else WHITE, alignment=TA_RIGHT)
+            return [Paragraph(lbl, lbl_style), Paragraph(val, val_style)]
 
-        gold_p = data['gold']['pivots']
-        g_stat = Table([
-            [Paragraph("CURRENT PRICE", subtitle_style), Paragraph("PIVOT POINT", subtitle_style), Paragraph("TARGET (R1)", subtitle_style)],
-            [Paragraph(f"<b>${data['gold']['spot']:.2f}</b>", title_style), Paragraph(f"<b>${gold_p['P']:.2f}</b>", gold_title_style), Paragraph(f"<b>${gold_p['R1']:.2f}</b>", title_style)]
-        ], colWidths=[2.2*inch, 2.2*inch, 2.2*inch])
-        g_stat.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#e2e8f0")),
-            ('BACKGROUND', (1, 0), (1, 1), colors.HexColor("#fef9e7")),
-            ('BOX', (1, 0), (1, 1), 1.5, GOLD_PRIMARY),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('PADDING', (0, 0), (-1, -1), 4)
-        ]))
-
-        g_matrix = Table([
-            ["Support Levels", "Resistance Levels"],
-            [f"S1: {gold_p['S1']:.2f}", f"R1: {gold_p['R1']:.2f}"],
-            [f"S2: {gold_p['S2']:.2f}", f"R2: {gold_p['R2']:.2f}"],
-            [f"S3: {gold_p['S3']:.2f}", f"R3: {gold_p['R3']:.2f}"]
-        ], colWidths=[3.3*inch, 3.3*inch])
-        g_matrix.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY_BLUE),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('PADDING', (0, 0), (-1, -1), 5),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0"))
-        ]))
-
-        buy_plan = Paragraph(f"<b>📈 Buy Above {gold_p['P']:.2f}</b><br/>Targets: {gold_p['R1']:.2f} | {gold_p['R2']:.2f}<br/>Stop Loss: {gold_p['S1']:.2f}", body_style)
-        sell_plan = Paragraph(f"<b>📉 Sell Below {gold_p['P']:.2f}</b><br/>Targets: {gold_p['S1']:.2f} | {gold_p['S2']:.2f}<br/>Stop Loss: {gold_p['R1']:.2f}", body_style)
-        trade_t = Table([[buy_plan, sell_plan]], colWidths=[3.3*inch, 3.3*inch])
-        trade_t.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (0, 0), colors.HexColor("#eefbf4")),
-            ('BOX', (0, 0), (0, 0), 1, colors.HexColor("#a3e6be")),
-            ('BACKGROUND', (1, 0), (1, 0), colors.HexColor("#fdeeee")),
-            ('BOX', (1, 0), (1, 0), 1, colors.HexColor("#f8b4b4")),
-            ('PADDING', (0, 0), (-1, -1), 6)
-        ]))
-
-        left_gold = [g_stat, Spacer(1, 6), g_matrix, Spacer(1, 6), trade_t]
-        gold_chart_img = Image(gold_chart_path, width=3.4*inch, height=3.3*inch)
-        story.append(Table([[left_gold, gold_chart_img]], colWidths=[6.8*inch, 3.4*inch]))
-        story.append(PageBreak())
-
-        # ---------------- SLIDE 4: SPOT SILVER TECHNICAL MATRIX ----------------
-        story.append(make_header("Spot Silver (XAG/USD) Technical Analysis", "H4 PRICE GRAPH"))
-        story.append(Spacer(1, 10))
-
-        silver_p = data['silver']['pivots']
-        s_stat = Table([
-            [Paragraph("CURRENT PRICE", subtitle_style), Paragraph("PIVOT POINT", subtitle_style)],
-            [Paragraph(f"<b>${data['silver']['spot']:.3f}</b>", title_style), Paragraph(f"<b>${silver_p['P']:.3f}</b>", gold_title_style)]
-        ], colWidths=[3.3*inch, 3.3*inch])
-        s_stat.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#e2e8f0")),
-            ('BACKGROUND', (1, 0), (1, 1), colors.HexColor("#fef9e7")),
-            ('BOX', (1, 0), (1, 1), 1.5, GOLD_PRIMARY),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('PADDING', (0, 0), (-1, -1), 4)
-        ]))
-
-        s_matrix = Table([
-            ["Key Support", "Key Resistance"],
-            [f"S1: {silver_p['S1']:.3f}", f"R1: {silver_p['R1']:.3f}"],
-            [f"S2: {silver_p['S2']:.3f}", f"R2: {silver_p['R2']:.3f}"],
-            [f"S3: {silver_p['S3']:.3f}", f"R3: {silver_p['R3']:.3f}"]
-        ], colWidths=[3.3*inch, 3.3*inch])
-        s_matrix.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY_BLUE),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('PADDING', (0, 0), (-1, -1), 5),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0"))
-        ]))
-
-        s_buy_plan = Paragraph(f"<b>📈 Buy Above {silver_p['P']:.3f}</b><br/>Targets: {silver_p['R1']:.3f} / {silver_p['R2']:.3f} | SL: {silver_p['S1']:.3f}", body_style)
-        s_sell_plan = Paragraph(f"<b>📉 Sell Below {silver_p['P']:.3f}</b><br/>Targets: {silver_p['S1']:.3f} / {silver_p['S2']:.3f} | SL: {silver_p['R1']:.3f}", body_style)
-        s_trade_t = Table([[s_buy_plan, s_sell_plan]], colWidths=[3.3*inch, 3.3*inch])
-        s_trade_t.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (0, 0), colors.HexColor("#eefbf4")),
-            ('BOX', (0, 0), (0, 0), 1, colors.HexColor("#a3e6be")),
-            ('BACKGROUND', (1, 0), (1, 0), colors.HexColor("#fdeeee")),
-            ('BOX', (1, 0), (1, 0), 1, colors.HexColor("#f8b4b4")),
-            ('PADDING', (0, 0), (-1, -1), 6)
-        ]))
-
-        left_silver = [s_stat, Spacer(1, 6), s_matrix, Spacer(1, 6), s_trade_t]
-        silver_chart_img = Image(silver_chart_path, width=3.4*inch, height=3.3*inch)
-        story.append(Table([[left_silver, silver_chart_img]], colWidths=[6.8*inch, 3.4*inch]))
-        story.append(PageBreak())
-
-        # ---------------- SLIDE 5: CLOSING & TRADING DESK ----------------
-        banner_content = [
-            [Paragraph("<font color='#dfb256'><b>Thank You</b></font>", title_style)],
-            [Paragraph("<b>\"Hold Real Value In Your Hands — Pure Value. Timeless Power.\"</b>", ParagraphStyle('B1', parent=body_style, textColor=colors.white, alignment=1))],
-            [Paragraph("Lanora Gold Trading LLC — Physical Bullion & Precious Metals Trading Desk", ParagraphStyle('B2', parent=body_style, textColor=colors.HexColor("#94a3b8"), alignment=1))]
-        ]
-        banner_table = Table(banner_content, colWidths=[9.8*inch])
-        banner_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), NAVY_BLUE),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('PADDING', (0, 0), (-1, -1), 10),
-            ('BOX', (0, 0), (-1, -1), 1, GOLD_PRIMARY)
-        ]))
-        story.append(banner_table)
-        story.append(Spacer(1, 15))
-
-        contacts = Table([
-            [
-                Paragraph("<b>Trading Desk Location</b><br/>Shop No. 18, Nasser Lootah Bldg.<br/>Next to Gold Center, Al Ras, Dubai, U.A.E.", body_style),
-                Paragraph("<b>Direct Phone Lines</b><br/>04-3215916<br/>0505395916", body_style),
-                Paragraph("<b>Email & Social Desk</b><br/>lanoragoldtrading@gmail.com<br/>@lanoragoldtrading", body_style)
+        def pivot_section(p, decimals=2):
+            fmt = f"{{:.{decimals}f}}"
+            rows = [
+                [Paragraph("SUPPORT",    ST_TABLE_HDR),
+                 Paragraph("RESISTANCE", ST_TABLE_HDR)],
+                [Paragraph(f"S1  {fmt.format(p['S1'])}", style("s1", fontName="Helvetica-Bold",
+                    fontSize=9.5, leading=12, textColor=GREEN_ACC, alignment=TA_CENTER)),
+                 Paragraph(f"R1  {fmt.format(p['R1'])}", style("r1", fontName="Helvetica-Bold",
+                    fontSize=9.5, leading=12, textColor=RED_ACC, alignment=TA_CENTER))],
+                [Paragraph(f"S2  {fmt.format(p['S2'])}", style("s2", fontName="Helvetica",
+                    fontSize=8.5, leading=11, textColor=GREEN_ACC, alignment=TA_CENTER)),
+                 Paragraph(f"R2  {fmt.format(p['R2'])}", style("r2", fontName="Helvetica",
+                    fontSize=8.5, leading=11, textColor=RED_ACC, alignment=TA_CENTER))],
+                [Paragraph(f"S3  {fmt.format(p['S3'])}", style("s3", fontName="Helvetica",
+                    fontSize=8, leading=11, textColor=colors.HexColor("#86efac"), alignment=TA_CENTER)),
+                 Paragraph(f"R3  {fmt.format(p['R3'])}", style("r3", fontName="Helvetica",
+                    fontSize=8, leading=11, textColor=colors.HexColor("#fca5a5"), alignment=TA_CENTER))],
             ]
-        ], colWidths=[3.2*inch, 3.2*inch, 3.2*inch])
-        contacts.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#e2e8f0")),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#edf2f7")),
-            ('PADDING', (0, 0), (-1, -1), 12),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER')
-        ]))
-        story.append(contacts)
-        story.append(Spacer(1, 15))
+            t = Table(rows, colWidths=[2.6*inch, 2.6*inch])
+            t.setStyle(TableStyle([
+                ("BACKGROUND",  (0,0), (-1,0), NAVY),
+                ("LINEBELOW",   (0,0), (-1,0), 1.5, GOLD),
+                ("BACKGROUND",  (0,1), (0,1), GREEN_BG),
+                ("BACKGROUND",  (1,1), (1,1), RED_BG),
+                ("BACKGROUND",  (0,2), (0,2), NAVY_CARD),
+                ("BACKGROUND",  (1,2), (1,2), NAVY_CARD),
+                ("BACKGROUND",  (0,3), (0,3), NAVY_MID),
+                ("BACKGROUND",  (1,3), (1,3), NAVY_MID),
+                ("BOX",         (0,0), (-1,-1), 1, DIVIDER),
+                ("INNERGRID",   (0,0), (-1,-1), 0.3, DIVIDER),
+                ("PADDING",     (0,0), (-1,-1), 8),
+                ("VALIGN",      (0,0), (-1,-1), "MIDDLE"),
+            ]))
+            return t
 
-        disclaimer = Paragraph("<b>Risk Statement & Legal Disclaimer:</b> Trading physical bullion, precious metals, and spot contracts carries substantial market risk and is not suitable for all investors. The technical pivot levels and strategies published herein are for informational and market research purposes only. Lanora Gold Trading LLC accepts no liability for trading decisions or losses incurred as a result of using this research.", ParagraphStyle('D', parent=body_style, fontSize=7, leading=10, textColor=colors.HexColor("#475569")))
-        disclaimer_table = Table([[disclaimer]], colWidths=[9.8*inch])
-        disclaimer_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#edf2f7")),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#cbd5e1")),
-            ('PADDING', (0, 0), (-1, -1), 8)
-        ]))
-        story.append(disclaimer_table)
+        def trade_plan_table(p, decimals=2):
+            fmt  = f"{{:.{decimals}f}}"
+            buy  = (f"<b>▲  BUY ABOVE PIVOT  {fmt.format(p['P'])}</b><br/>"
+                    f"<font color='#86efac'>Targets: {fmt.format(p['R1'])} → {fmt.format(p['R2'])}</font>   "
+                    f"<font color='#fca5a5'>Stop Loss: {fmt.format(p['S1'])}</font>")
+            sell = (f"<b>▼  SELL BELOW PIVOT  {fmt.format(p['P'])}</b><br/>"
+                    f"<font color='#fca5a5'>Targets: {fmt.format(p['S1'])} → {fmt.format(p['S2'])}</font>   "
+                    f"<font color='#86efac'>Stop Loss: {fmt.format(p['R1'])}</font>")
+            def ts(name, color):
+                return style(name, fontName="Helvetica", fontSize=8, leading=13,
+                             textColor=color)
+            t = Table([
+                [Paragraph(buy,  ts("buy_t",  GREEN_ACC)),
+                 Paragraph(sell, ts("sell_t", RED_ACC))],
+            ], colWidths=[2.6*inch, 2.6*inch])
+            t.setStyle(TableStyle([
+                ("BACKGROUND", (0,0), (0,0), GREEN_BG),
+                ("BACKGROUND", (1,0), (1,0), RED_BG),
+                ("BOX",        (0,0), (0,0), 1, GREEN_ACC),
+                ("BOX",        (1,0), (1,0), 1, RED_ACC),
+                ("PADDING",    (0,0), (-1,-1), 8),
+                ("VALIGN",     (0,0), (-1,-1), "MIDDLE"),
+            ]))
+            return t
 
+        def pivot_badge(p_val, spot_val, decimals=2):
+            fmt    = f"{{:.{decimals}f}}"
+            p_str  = fmt.format(p_val)
+            sp_str = fmt.format(spot_val)
+            return Table([
+                [Paragraph("SPOT PRICE", style("SL", fontName="Helvetica-Bold", fontSize=6.5,
+                                                leading=8, textColor=SLATE, alignment=TA_CENTER)),
+                 Paragraph("PIVOT POINT", style("PivL", fontName="Helvetica-Bold", fontSize=6.5,
+                                                 leading=8, textColor=SLATE, alignment=TA_CENTER))],
+                [Paragraph(f"<b>{sp_str}</b>",
+                            style("SV", fontName="Helvetica-Bold", fontSize=16, leading=20,
+                                  textColor=WHITE, alignment=TA_CENTER)),
+                 Paragraph(f"<b>{p_str}</b>",
+                            style("PV2", fontName="Helvetica-Bold", fontSize=16, leading=20,
+                                  textColor=GOLD, alignment=TA_CENTER))],
+            ], colWidths=[2.6*inch, 2.6*inch])
+
+        def badge_style(t):
+            t.setStyle(TableStyle([
+                ("BACKGROUND",  (0,0), (-1,-1), NAVY_CARD),
+                ("BOX",         (0,0), (-1,-1), 1, DIVIDER),
+                ("INNERGRID",   (0,0), (-1,-1), 0.5, DIVIDER),
+                ("LINEABOVE",   (0,0), (-1,0), 2, GOLD),
+                ("LINEABOVE",   (0,1), (-1,1), 1, DIVIDER),
+                ("ALIGN",       (0,0), (-1,-1), "CENTER"),
+                ("PADDING",     (0,0), (-1,-1), 8),
+                ("VALIGN",      (0,0), (-1,-1), "MIDDLE"),
+            ]))
+            return t
+
+        # ══════════════════════════════════════════════════════════════════════
+        # SLIDE 3 — SPOT GOLD TECHNICAL MATRIX
+        # ══════════════════════════════════════════════════════════════════════
+        story += make_header("Spot Gold (XAU/USD) — Technical Analysis")
+        story.append(Paragraph(
+            "Classic Floor Pivot Point Analysis · Daily Session Levels · Dubai (GMT+4)",
+            ST_SUBTITLE))
+        story.append(Spacer(1, 8))
+
+        gp = data['gold']['pivots']
+        g_badge = badge_style(pivot_badge(gp['P'], data['gold']['spot'], decimals=2))
+        g_pivot = pivot_section(gp, decimals=2)
+        g_trade = trade_plan_table(gp, decimals=2)
+
+        left_gold = Table([
+            [g_badge],
+            [Spacer(1, 7)],
+            [g_pivot],
+            [Spacer(1, 7)],
+            [g_trade],
+        ], colWidths=[5.3*inch])
+        left_gold.setStyle(TableStyle([
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("PADDING",(0,0), (-1,-1), 0),
+        ]))
+
+        gold_chart_img = Image(gold_chart_path, width=4.5*inch, height=3.6*inch)
+        chart_panel_g = Table([[gold_chart_img]], colWidths=[4.7*inch])
+        chart_panel_g.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,-1), NAVY_CARD),
+            ("BOX",        (0,0), (-1,-1), 1, DIVIDER),
+            ("LINEABOVE",  (0,0), (-1,0), 2, GOLD),
+            ("ALIGN",      (0,0), (-1,-1), "CENTER"),
+            ("VALIGN",     (0,0), (-1,-1), "MIDDLE"),
+            ("PADDING",    (0,0), (-1,-1), 6),
+        ]))
+
+        slide3 = Table([[left_gold, chart_panel_g]], colWidths=[5.4*inch, 4.8*inch])
+        slide3.setStyle(TableStyle([
+            ("VALIGN",      (0,0), (-1,-1), "TOP"),
+            ("LEFTPADDING", (1,0), (1,0), 10),
+        ]))
+        story.append(slide3)
+        story.append(PageBreak())
+
+        # ══════════════════════════════════════════════════════════════════════
+        # SLIDE 4 — SPOT SILVER TECHNICAL MATRIX
+        # ══════════════════════════════════════════════════════════════════════
+        story += make_header("Spot Silver (XAG/USD) — Technical Analysis")
+        story.append(Paragraph(
+            "Classic Floor Pivot Point Analysis · Daily Session Levels · Dubai (GMT+4)",
+            ST_SUBTITLE))
+        story.append(Spacer(1, 8))
+
+        sp = data['silver']['pivots']
+        s_badge = badge_style(pivot_badge(sp['P'], data['silver']['spot'], decimals=3))
+        s_pivot = pivot_section(sp, decimals=3)
+        s_trade = trade_plan_table(sp, decimals=3)
+
+        left_silver = Table([
+            [s_badge],
+            [Spacer(1, 7)],
+            [s_pivot],
+            [Spacer(1, 7)],
+            [s_trade],
+        ], colWidths=[5.3*inch])
+        left_silver.setStyle(TableStyle([
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("PADDING",(0,0), (-1,-1), 0),
+        ]))
+
+        silver_chart_img = Image(silver_chart_path, width=4.5*inch, height=3.6*inch)
+        chart_panel_s = Table([[silver_chart_img]], colWidths=[4.7*inch])
+        chart_panel_s.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,-1), NAVY_CARD),
+            ("BOX",        (0,0), (-1,-1), 1, DIVIDER),
+            ("LINEABOVE",  (0,0), (-1,0), 2, SILVER_C),
+            ("ALIGN",      (0,0), (-1,-1), "CENTER"),
+            ("VALIGN",     (0,0), (-1,-1), "MIDDLE"),
+            ("PADDING",    (0,0), (-1,-1), 6),
+        ]))
+
+        slide4 = Table([[left_silver, chart_panel_s]], colWidths=[5.4*inch, 4.8*inch])
+        slide4.setStyle(TableStyle([
+            ("VALIGN",      (0,0), (-1,-1), "TOP"),
+            ("LEFTPADDING", (1,0), (1,0), 10),
+        ]))
+        story.append(slide4)
+        story.append(PageBreak())
+
+        # ══════════════════════════════════════════════════════════════════════
+        # SLIDE 5 — CLOSING & TRADING DESK
+        # ══════════════════════════════════════════════════════════════════════
+        logo_img_lg = Image(LOGO, width=1.0*inch, height=1.0*inch)
+        thank_you   = Paragraph(
+            "<font color='#dfb256'><b>Thank You</b></font>",
+            style("TY", fontName="Helvetica-Bold", fontSize=28, leading=32,
+                  textColor=GOLD, alignment=TA_CENTER))
+        tagline5 = Paragraph(
+            "<b>\"Hold Real Value In Your Hands — Pure Value. Timeless Power.\"</b>",
+            style("T5", fontName="Helvetica", fontSize=11, leading=16,
+                  textColor=WHITE, alignment=TA_CENTER))
+        sub5 = Paragraph(
+            "Lanora Gold Trading LLC · Physical Bullion &amp; Precious Metals Research Desk",
+            style("S5", fontName="Helvetica", fontSize=8.5, leading=12,
+                  textColor=SLATE, alignment=TA_CENTER))
+
+        hero = Table([
+            [logo_img_lg],
+            [Spacer(1, 8)],
+            [thank_you],
+            [Spacer(1, 6)],
+            [tagline5],
+            [Spacer(1, 4)],
+            [sub5],
+        ], colWidths=[IW])
+        hero.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,-1), NAVY_CARD),
+            ("BOX",        (0,0), (-1,-1), 1.5, GOLD),
+            ("ALIGN",      (0,0), (-1,-1), "CENTER"),
+            ("VALIGN",     (0,0), (-1,-1), "MIDDLE"),
+            ("PADDING",    (0,0), (-1,-1), 14),
+        ]))
+        story.append(hero)
+        story.append(Spacer(1, 10))
+
+        # Contact Cards Row
+        def ccard(icon, title, lines):
+            return Table([
+                [Paragraph(f"<b>{icon}  {title}</b>",
+                            style("CC", fontName="Helvetica-Bold", fontSize=8, leading=10,
+                                  textColor=GOLD))],
+                [Paragraph("<br/>".join(lines), ST_CONTACT)],
+            ], colWidths=[3.0*inch])
+
+        c1 = ccard("📍", "Trading Desk",
+                   ["Shop No. 18, Nasser Lootah Bldg.",
+                    "Gold Center, Al Ras, Dubai, U.A.E."])
+        c2 = ccard("📞", "Phone",
+                   ["04-3215916", "0505395916"])
+        c3 = ccard("✉", "Email &amp; Social",
+                   ["lanoragoldtrading@gmail.com", "@lanoragoldtrading"])
+
+        crow = Table([[c1, c2, c3]], colWidths=[3.2*inch]*3)
+        crow.setStyle(TableStyle([
+            ("BACKGROUND",  (0,0), (-1,-1), NAVY_CARD),
+            ("BOX",         (0,0), (-1,-1), 1, DIVIDER),
+            ("INNERGRID",   (0,0), (-1,-1), 0.5, DIVIDER),
+            ("PADDING",     (0,0), (-1,-1), 10),
+            ("ALIGN",       (0,0), (-1,-1), "CENTER"),
+            ("VALIGN",      (0,0), (-1,-1), "MIDDLE"),
+            ("LINEABOVE",   (0,0), (-1,0), 2, GOLD),
+        ]))
+        story.append(crow)
+        story.append(Spacer(1, 8))
+
+        # Disclaimer
+        disc = Table([[Paragraph(
+            "<b>Risk Disclaimer:</b> Trading physical bullion, precious metals, and spot "
+            "contracts carries substantial market risk and is not suitable for all investors. "
+            "Technical pivot levels and strategies are for informational and market research "
+            "purposes only. Lanora Gold Trading LLC accepts no liability for trading decisions "
+            "or losses incurred as a result of using this research.",
+            ST_DISCLAIMER)]], colWidths=[IW])
+        disc.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,-1), NAVY_MID),
+            ("BOX",        (0,0), (-1,-1), 0.5, DIVIDER),
+            ("PADDING",    (0,0), (-1,-1), 7),
+        ]))
+        story.append(disc)
+
+        # ── Build ─────────────────────────────────────────────────────────────
         doc.build(story)
         print(f"PDF Successfully Generated: {output_filename}")
         return True
 
     except Exception as e:
-        print(f"ReportLab PDF Generation Error: {e}")
+        import traceback
+        print(f"PDF Generation Error: {e}")
+        traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     out_file = sys.argv[1] if len(sys.argv) > 1 else "Lanora_Gold_Daily_Technical_Report.pdf"

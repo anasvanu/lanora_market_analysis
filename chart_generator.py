@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lanora Gold Trading LLC — H4 Technical Candlestick/Area Graph Generator
+Lanora Gold Trading LLC — Technical Price Chart Generator
 Generates high-resolution chart images for Spot Gold (XAU/USD) and Spot Silver (XAG/USD)
 to be embedded directly into PDF Slide 3 & Slide 4.
 """
@@ -44,7 +44,7 @@ def generate_gold_chart(spot_price=4583.40, pivot_price=4601.40, output_path="as
     ax.text(2.6, pivot_price + 15, f"Pivot: {pivot_price:.2f}", color='#dfb256', fontsize=8.5, fontweight='bold')
 
     # Styling
-    ax.set_title("XAU/USD, H4 Technical Graph", color='#dfb256', fontsize=12, fontweight='bold', pad=12, loc='left')
+    ax.set_title("XAU/USD — Price Analysis", color='#dfb256', fontsize=12, fontweight='bold', pad=12, loc='left')
     ax.set_xticks(np.linspace(0, 4, len(dates)))
     ax.set_xticklabels(dates, color='#94a3b8', fontsize=8)
     ax.tick_params(colors='#94a3b8', labelsize=8)
@@ -91,7 +91,7 @@ def generate_silver_chart(spot_price=68.750, pivot_price=68.595, output_path="as
     ax.text(2.6, pivot_price + 0.4, f"Pivot: {pivot_price:.3f}", color='#dfb256', fontsize=8.5, fontweight='bold')
 
     # Styling
-    ax.set_title("XAG/USD, H4 Technical Graph", color='#dfb256', fontsize=12, fontweight='bold', pad=12, loc='left')
+    ax.set_title("XAG/USD — Price Analysis", color='#dfb256', fontsize=12, fontweight='bold', pad=12, loc='left')
     ax.set_xticks(np.linspace(0, 4, len(dates)))
     ax.set_xticklabels(dates, color='#94a3b8', fontsize=8)
     ax.tick_params(colors='#94a3b8', labelsize=8)
