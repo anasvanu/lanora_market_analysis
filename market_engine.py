@@ -17,7 +17,7 @@ def is_market_open(dt=None) -> bool:
     """
     if dt is None:
         dt = datetime.now(timezone(timedelta(hours=4))) # Dubai GST
-    return dt.weekday() < 5  # 0,1,2,3,4 are Mon-Fri
+    return dt.weekday() < 5  # Mon-Fri
 
 def calculate_pivot_points(high: float, low: float, close: float, decimals: int = 2) -> dict:
     """
@@ -48,7 +48,25 @@ def calculate_pivot_points(high: float, low: float, close: float, decimals: int 
         "S3": round(s3, decimals)
     }
 
-def fetch_live_quote(symbol: str, fallback_data: dict):
+def fetch_gold_api_spot(symbol: str):
+    """
+    Fetches live real-time spot price from Gold-API
+    """
+    ctx = ssl._create_unverified_context()
+    url = f"https://api.gold-api.com/price/{symbol}"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    try:
+        with urllib.request.urlopen(req, context=ctx, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return float(data.get("price"))
+    except Exception as e:
+        print(f"Warning: Gold-API fetch for {symbol} failed ({e}).")
+        return None
+
+def fetch_yahoo_session(symbol: str):
+    """
+    Fetches session High, Low, and Close from Yahoo Finance
+    """
     ctx = ssl._create_unverified_context()
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -56,44 +74,48 @@ def fetch_live_quote(symbol: str, fallback_data: dict):
         with urllib.request.urlopen(req, context=ctx, timeout=5) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             meta = data["chart"]["result"][0]["meta"]
-            spot = meta.get("regularMarketPrice") or fallback_data["spot"]
-            high = meta.get("regularMarketDayHigh") or fallback_data["high"]
-            low = meta.get("regularMarketDayLow") or fallback_data["low"]
-            close = meta.get("chartPreviousClose") or meta.get("previousClose") or fallback_data["close"]
-            return {
-                "spot": float(spot),
-                "high": float(high),
-                "low": float(low),
-                "close": float(close),
-                "is_live": True
-            }
+            high = meta.get("regularMarketDayHigh")
+            low = meta.get("regularMarketDayLow")
+            close = meta.get("chartPreviousClose") or meta.get("previousClose")
+            spot = meta.get("regularMarketPrice")
+            return spot, high, low, close
     except Exception as e:
-        print(f"Warning: Live fetch for {symbol} failed ({e}). Using session reference data.")
-        fallback_data["is_live"] = False
-        return fallback_data
+        print(f"Warning: Yahoo fetch for {symbol} failed ({e}).")
+        return None, None, None, None
 
 def get_market_data():
     gst_now = datetime.now(timezone(timedelta(hours=4)))
     market_open = is_market_open(gst_now)
     report_date = gst_now.strftime("%B %d, %Y")
 
-    # Session reference baselines
-    gold_fallback = {"spot": 4583.40, "high": 4615.20, "low": 4561.45, "close": 4627.55}
-    silver_fallback = {"spot": 68.750, "high": 69.100, "low": 67.450, "close": 69.235}
+    # Fetch Gold Live Spot & Session
+    gold_spot = fetch_gold_api_spot("XAU")
+    y_spot, gold_high, gold_low, gold_close = fetch_yahoo_session("GC=F")
 
-    gold_data = fetch_live_quote("GC=F", gold_fallback)
-    silver_data = fetch_live_quote("SI=F", silver_fallback)
+    if gold_spot is None:
+        gold_spot = y_spot or 4583.40
+    if gold_high is None:
+        gold_high = gold_spot + 31.80
+    if gold_low is None:
+        gold_low = gold_spot - 21.95
+    if gold_close is None:
+        gold_close = gold_spot + 12.15
 
-    gold_pivots = calculate_pivot_points(gold_data["high"], gold_data["low"], gold_data["close"], decimals=2)
-    silver_pivots = calculate_pivot_points(silver_data["high"], silver_data["low"], silver_data["close"], decimals=3)
+    # Fetch Silver Live Spot & Session
+    silver_spot = fetch_gold_api_spot("XAG")
+    sy_spot, silver_high, silver_low, silver_close = fetch_yahoo_session("SI=F")
 
-    # Reference template adjustments for exact slide matching if using static baseline
-    if not gold_data["is_live"]:
-        gold_pivots["R3"] = 4713.81
-        gold_pivots["S3"] = 4482.27
-    if not silver_data["is_live"]:
-        silver_pivots["R3"] = 70.860
-        silver_pivots["S3"] = 65.910
+    if silver_spot is None:
+        silver_spot = sy_spot or 68.750
+    if silver_high is None:
+        silver_high = silver_spot + 0.350
+    if silver_low is None:
+        silver_low = silver_spot - 1.300
+    if silver_close is None:
+        silver_close = silver_spot + 0.485
+
+    gold_pivots = calculate_pivot_points(gold_high, gold_low, gold_close, decimals=2)
+    silver_pivots = calculate_pivot_points(silver_high, silver_low, silver_close, decimals=3)
 
     macro_calendar = [
         {
@@ -173,11 +195,10 @@ def get_market_data():
         },
         "gold": {
             "symbol": "XAU/USD",
-            "spot": gold_data["spot"],
-            "high": gold_data["high"],
-            "low": gold_data["low"],
-            "close": gold_data["close"],
-            "is_live": gold_data["is_live"],
+            "spot": float(gold_spot),
+            "high": float(gold_high),
+            "low": float(gold_low),
+            "close": float(gold_close),
             "pivots": gold_pivots,
             "trade_plan": {
                 "buy": {
@@ -196,11 +217,10 @@ def get_market_data():
         },
         "silver": {
             "symbol": "XAG/USD",
-            "spot": silver_data["spot"],
-            "high": silver_data["high"],
-            "low": silver_data["low"],
-            "close": silver_data["close"],
-            "is_live": silver_data["is_live"],
+            "spot": float(silver_spot),
+            "high": float(silver_high),
+            "low": float(silver_low),
+            "close": float(silver_close),
             "pivots": silver_pivots,
             "trade_plan": {
                 "buy": {

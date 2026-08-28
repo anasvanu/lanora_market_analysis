@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
 Lanora Gold Trading LLC — PDF Presentation Exporter
-Compiles print-perfect 5-page 16:9 landscape PDF technical reports.
+Compiles print-perfect 5-page 16:9 landscape PDF technical reports with H4 Candlestick Charts embedded.
 """
 
 import sys
 import os
 from datetime import datetime
 from market_engine import get_market_data
+from chart_generator import generate_gold_chart, generate_silver_chart
 
 def generate_pdf_report(output_filename="Lanora_Gold_Daily_Technical_Report.pdf"):
     print(f"Generating PDF Technical Report: {output_filename}...")
     data = get_market_data()
+
+    # Generate dynamic H4 Technical Graphs for Gold & Silver
+    gold_chart_path = generate_gold_chart(data['gold']['spot'], data['gold']['pivots']['P'], "assets/gold_chart.png")
+    silver_chart_path = generate_silver_chart(data['silver']['spot'], data['silver']['pivots']['P'], "assets/silver_chart.png")
 
     try:
         from reportlab.lib.pagesizes import landscape, A4
@@ -37,7 +42,6 @@ def generate_pdf_report(output_filename="Lanora_Gold_Daily_Technical_Report.pdf"
 
         styles = getSampleStyleSheet()
         
-        # Brand Typography & Colors
         NAVY_DARK = colors.HexColor("#060d1d")
         NAVY_BLUE = colors.HexColor("#0b1930")
         GOLD_PRIMARY = colors.HexColor("#dfb256")
@@ -96,7 +100,6 @@ def generate_pdf_report(output_filename="Lanora_Gold_Daily_Technical_Report.pdf"
 
         story = []
 
-        # Helper Header Row
         def make_header(title_text, badge_text=""):
             logo_img = Image(logo_path, width=0.6*inch, height=0.6*inch)
             title_p = Paragraph(f"<b>{title_text}</b>", title_style)
@@ -117,7 +120,6 @@ def generate_pdf_report(output_filename="Lanora_Gold_Daily_Technical_Report.pdf"
         story.append(Paragraph("Daily Pivot Points, Support/Resistance & Trade Strategies", subtitle_style))
         story.append(Spacer(1, 15))
 
-        # Meta info card + Right feature card
         meta_content = [
             [Paragraph("<b>FIRM NAME</b>", subtitle_style), Paragraph("<b>REPORT DATE</b>", subtitle_style)],
             [Paragraph(f"<b>{data['company']['name']}</b>", body_style), Paragraph(f"<b>{data['report_metadata']['date']}</b>", body_style)],
@@ -225,7 +227,8 @@ def generate_pdf_report(output_filename="Lanora_Gold_Daily_Technical_Report.pdf"
         ]))
 
         left_gold = [g_stat, Spacer(1, 6), g_matrix, Spacer(1, 6), trade_t]
-        story.append(Table([[left_gold, Image(logo_path, width=3*inch, height=3*inch)]], colWidths=[6.8*inch, 3.4*inch]))
+        gold_chart_img = Image(gold_chart_path, width=3.4*inch, height=3.3*inch)
+        story.append(Table([[left_gold, gold_chart_img]], colWidths=[6.8*inch, 3.4*inch]))
         story.append(PageBreak())
 
         # ---------------- SLIDE 4: SPOT SILVER TECHNICAL MATRIX ----------------
@@ -272,7 +275,8 @@ def generate_pdf_report(output_filename="Lanora_Gold_Daily_Technical_Report.pdf"
         ]))
 
         left_silver = [s_stat, Spacer(1, 6), s_matrix, Spacer(1, 6), s_trade_t]
-        story.append(Table([[left_silver, Image(logo_path, width=3*inch, height=3*inch)]], colWidths=[6.8*inch, 3.4*inch]))
+        silver_chart_img = Image(silver_chart_path, width=3.4*inch, height=3.3*inch)
+        story.append(Table([[left_silver, silver_chart_img]], colWidths=[6.8*inch, 3.4*inch]))
         story.append(PageBreak())
 
         # ---------------- SLIDE 5: CLOSING & TRADING DESK ----------------
