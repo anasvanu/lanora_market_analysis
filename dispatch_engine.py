@@ -135,7 +135,7 @@ def send_whatsapp_report(pdf_filepath: str, phone: str = DEFAULT_WHATSAPP):
     if webhook_url:
         try:
             # Format request depending on API provider
-            if "green-api.com" in webhook_url:
+            if "green-api.com" in webhook_url or "greenapi.com" in webhook_url:
                 payload = {
                     "chatId": f"{clean_phone}@c.us",
                     "message": summary_text
