@@ -65,20 +65,39 @@ def fetch_gold_api_spot(symbol: str):
 
 def fetch_yahoo_session(symbol: str):
     """
-    Fetches session High, Low, and Close from Yahoo Finance
+    Fetches the PREVIOUS COMPLETED daily session High, Low, and Close from Yahoo Finance
     """
     ctx = ssl._create_unverified_context()
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=5d&interval=1d"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
         with urllib.request.urlopen(req, context=ctx, timeout=5) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            meta = data["chart"]["result"][0]["meta"]
-            high = meta.get("regularMarketDayHigh")
-            low = meta.get("regularMarketDayLow")
-            close = meta.get("chartPreviousClose") or meta.get("previousClose")
+            result = data["chart"]["result"][0]
+            meta = result["meta"]
             spot = meta.get("regularMarketPrice")
-            return spot, high, low, close
+            
+            quotes = result["indicators"]["quote"][0]
+            highs = [h for h in quotes["high"] if h is not None]
+            lows = [l for l in quotes["low"] if l is not None]
+            closes = [c for c in quotes["close"] if c is not None]
+            
+            # If we have at least 2 days of daily candles, index -2 is the previous completed day
+            # If only 1 day, take index -1
+            if len(closes) >= 2:
+                prev_high = highs[-2]
+                prev_low = lows[-2]
+                prev_close = closes[-2]
+            elif len(closes) == 1:
+                prev_high = highs[-1]
+                prev_low = lows[-1]
+                prev_close = closes[-1]
+            else:
+                prev_high = meta.get("regularMarketDayHigh")
+                prev_low = meta.get("regularMarketDayLow")
+                prev_close = meta.get("chartPreviousClose") or meta.get("previousClose")
+
+            return spot, prev_high, prev_low, prev_close
     except Exception as e:
         print(f"Warning: Yahoo fetch for {symbol} failed ({e}).")
         return None, None, None, None
