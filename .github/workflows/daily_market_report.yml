@@ -2,14 +2,22 @@ name: Lanora Gold Daily Technical Report Automation
 
 on:
   schedule:
-    # Runs at 04:00 UTC every Monday to Friday (08:00 AM GST / Gulf Standard Time)
+    # Primary: 04:00 UTC = 08:00 AM GST (Gulf Standard Time, GMT+4)
     - cron: '0 4 * * 1-5'
+    # Backup: 05:00 UTC = 09:00 AM GST — in case primary slot is delayed by GitHub
+    - cron: '0 5 * * 1-5'
   workflow_dispatch:
     # Allows manual trigger anytime from GitHub Actions tab
+
+# Prevent duplicate runs if both cron slots fire at once
+concurrency:
+  group: daily-report-${{ github.ref }}-${{ github.run_date || github.sha }}
+  cancel-in-progress: false
 
 jobs:
   generate_and_dispatch:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Code
@@ -26,6 +34,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Show Current GST Time
+        run: |
+          python3 -c "
+          from datetime import datetime, timezone, timedelta
+          gst = datetime.now(timezone(timedelta(hours=4)))
+          print(f'Current GST Time: {gst.strftime(\"%Y-%m-%d %H:%M:%S\")} (GMT+4)')
+          print(f'Day of week: {gst.strftime(\"%A\")}')
+          "
+
       - name: Execute Daily Morning Market Research & Report Generation
         env:
           SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
@@ -41,6 +58,7 @@ jobs:
       - name: Upload Report PDF as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Lanora-Gold-Daily-Technical-Report
+          name: Lanora-Gold-Report-${{ github.run_number }}
           path: "*.pdf"
           retention-days: 30
+          if-no-files-found: warn
