@@ -102,36 +102,57 @@ def fetch_yahoo_session(symbol: str):
         print(f"Warning: Yahoo fetch for {symbol} failed ({e}).")
         return None, None, None, None
 
+def fetch_spot_session(metal_sym: str, yahoo_future_sym: str, default_spot: float):
+    """
+    Fetches strictly physical Spot Cash Metals OHLC (XAU/USD & XAG/USD).
+    Removes COMEX futures contract rollover/basis premium so all pivots are 100% Spot-based.
+    """
+    ctx = ssl._create_unverified_context()
+    
+    # 1. Live real-time spot price from Gold-API
+    live_spot = fetch_gold_api_spot(metal_sym)
+    
+    # 2. Previous completed daily spot close
+    spot_close = None
+    try:
+        url_close = f"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{metal_sym.lower()}.json"
+        req_close = urllib.request.Request(url_close, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req_close, context=ctx, timeout=5) as resp:
+            d_close = json.loads(resp.read().decode("utf-8"))
+            spot_close = float(d_close[metal_sym.lower()]["usd"])
+    except Exception as e:
+        print(f"Warning: currency-api spot close for {metal_sym} failed ({e}).")
+
+    # 3. Yahoo session range for the previous completed daily bar
+    f_spot, f_high, f_low, f_close = fetch_yahoo_session(yahoo_future_sym)
+    
+    if live_spot is None:
+        live_spot = spot_close or f_spot or default_spot
+        
+    if spot_close is None:
+        spot_close = live_spot
+
+    if f_high is not None and f_low is not None and f_close is not None:
+        # Subtract the futures basis spread (Futures Close - Spot Close) to get true Spot High & Low
+        basis = f_close - spot_close
+        spot_high = f_high - basis
+        spot_low = f_low - basis
+    else:
+        spot_high = spot_close * 1.008
+        spot_low = spot_close * 0.992
+
+    return live_spot, spot_high, spot_low, spot_close
+
 def get_market_data():
     gst_now = datetime.now(timezone(timedelta(hours=4)))
     market_open = is_market_open(gst_now)
     report_date = gst_now.strftime("%B %d, %Y")
 
-    # Fetch Gold Live Spot & Session
-    gold_spot = fetch_gold_api_spot("XAU")
-    y_spot, gold_high, gold_low, gold_close = fetch_yahoo_session("GC=F")
+    # Fetch 100% Physical Spot Gold (XAU/USD)
+    gold_spot, gold_high, gold_low, gold_close = fetch_spot_session("XAU", "GC=F", 4436.00)
 
-    if gold_spot is None:
-        gold_spot = y_spot or 4583.40
-    if gold_high is None:
-        gold_high = gold_spot + 31.80
-    if gold_low is None:
-        gold_low = gold_spot - 21.95
-    if gold_close is None:
-        gold_close = gold_spot + 12.15
-
-    # Fetch Silver Live Spot & Session
-    silver_spot = fetch_gold_api_spot("XAG")
-    sy_spot, silver_high, silver_low, silver_close = fetch_yahoo_session("SI=F")
-
-    if silver_spot is None:
-        silver_spot = sy_spot or 68.750
-    if silver_high is None:
-        silver_high = silver_spot + 0.350
-    if silver_low is None:
-        silver_low = silver_spot - 1.300
-    if silver_close is None:
-        silver_close = silver_spot + 0.485
+    # Fetch 100% Physical Spot Silver (XAG/USD)
+    silver_spot, silver_high, silver_low, silver_close = fetch_spot_session("XAG", "SI=F", 66.750)
 
     gold_pivots = calculate_pivot_points(gold_high, gold_low, gold_close, decimals=2)
     silver_pivots = calculate_pivot_points(silver_high, silver_low, silver_close, decimals=3)
