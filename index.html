@@ -3,372 +3,411 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lanora Gold Trading LLC — Daily Technical Market Report</title>
+  <title>Lanora Gold Trading LLC — AI Market Studio & PDF Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Trebuchet+MS&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
-  <!-- Top System Control Bar -->
-  <div class="control-bar">
-    <div class="control-brand">
-      <img src="assets/lanora_logo_badge.jpg" alt="Lanora Logo">
-      <span>LANORA GOLD TRADING</span>
-    </div>
-
-    <div class="slide-tabs">
-      <button class="tab-btn active" onclick="switchSlide(1)">Slide 1: Cover</button>
-      <button class="tab-btn" onclick="switchSlide(2)">Slide 2: Calendar</button>
-      <button class="tab-btn" onclick="switchSlide(3)">Slide 3: Gold (XAU)</button>
-      <button class="tab-btn" onclick="switchSlide(4)">Slide 4: Silver (XAG)</button>
-      <button class="tab-btn" onclick="switchSlide(5)">Slide 5: Closing</button>
-    </div>
-
-    <div class="control-buttons">
-      <button class="btn" onclick="refreshLiveData()">🔄 Live Refresh</button>
-      <button class="btn btn-primary" onclick="exportPDF()">📥 Download PDF</button>
-      <button class="btn" onclick="triggerEmailDispatch()">✉️ Email</button>
-      <button class="btn" onclick="triggerWhatsAppDispatch()">📱 WhatsApp</button>
-    </div>
-  </div>
-
-  <!-- Deck Viewport 16:9 -->
-  <div class="deck-viewport" id="deckContent">
-    <div class="top-accent-bar"></div>
-
-    <!-- SLIDE 1: COVER PAGE -->
-    <div class="slide active" id="slide-1">
-      <div class="slide-header">
-        <div class="header-left">
-          <div class="slide-title-group">
-            <h1>Precious Metals <span class="gold-text">Technical Report</span></h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 4px;">Daily Pivot Points, Support/Resistance & Trade Strategies</p>
-          </div>
-        </div>
-        <img src="assets/lanora_logo_badge.jpg" alt="Lanora Logo" class="header-logo-badge">
-      </div>
-
-      <div class="content-grid-split">
-        <div class="left-panel">
-          <div></div>
-          <div class="meta-info-box">
-            <div class="meta-item">
-              <label>FIRM NAME</label>
-              <span id="firmName">Lanora Gold Trading LLC</span>
-            </div>
-            <div class="meta-item">
-              <label>REPORT DATE</label>
-              <span id="reportDate">August 28, 2026</span>
-            </div>
-            <div class="meta-item">
-              <label>LOCATION</label>
-              <span>Dubai, U.A.E.</span>
-            </div>
-            <div class="meta-item">
-              <label>TRADING DESK</label>
-              <span>Al Ras, Gold Center</span>
-            </div>
-          </div>
-          <div></div>
-        </div>
-
-        <div class="right-panel">
-          <div class="dark-feature-card">
-            <div class="feature-img-wrapper">
-              <img src="assets/gold_1kg_feature.jpg" alt="1 Kilo Fine Gold Bullion">
-            </div>
-            <div class="feature-card-body">
-              <h3>Hold Real Value In Your Hands</h3>
-              <p>"Pure value. Timeless Power." — Official 1 Kilo Fine Gold 999.9 physical bullion technical research for Dubai market desks.</p>
-            </div>
-            <div class="feature-card-footer">
-              <span>Gold Spot Reference</span>
-              <span class="spot-price-tag" id="goldSpotCover">$4,583.40</span>
-            </div>
-          </div>
-        </div>
+  <!-- Top App Navigation Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <img src="assets/lanora_logo_badge.png" alt="Lanora Logo" class="brand-logo">
+      <div class="brand-text">
+        <div class="brand-title">LANORA GOLD TRADING</div>
+        <div class="brand-subtitle">AI Market Analyst Studio · Dubai (GMT+4)</div>
       </div>
     </div>
 
-    <!-- SLIDE 2: MACROECONOMIC CALENDAR -->
-    <div class="slide" id="slide-2">
-      <div class="slide-header">
-        <div class="header-left">
-          <div class="slide-title-group">
-            <h1>Macro Economic Calendar</h1>
-          </div>
-          <span class="header-badge">DUBAI TIME (GMT+4)</span>
-        </div>
-        <img src="assets/lanora_logo_badge.jpg" alt="Lanora Logo" class="header-logo-badge">
+    <!-- Live Spot Ticker -->
+    <div class="live-ticker">
+      <div class="ticker-pill gold-ticker">
+        <span class="ticker-dot"></span>
+        <span class="ticker-name">XAU/USD:</span>
+        <span class="ticker-price" id="topGoldSpot">$4,436.00</span>
       </div>
-
-      <div class="content-grid-split">
-        <div class="left-panel">
-          <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 16px;">Key macroeconomic releases scheduled for today impacting USD volatility and precious metals spot pricing:</p>
-          <div class="table-container">
-            <table class="econ-table">
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Cur.</th>
-                  <th>Economic Event</th>
-                  <th>Forecast</th>
-                  <th>Previous</th>
-                </tr>
-              </thead>
-              <tbody id="macroTableBody">
-                <tr>
-                  <td><strong>4:30 PM</strong></td>
-                  <td><span class="cur-badge">CAD</span></td>
-                  <td>Gross Domestic Product (GDP) m/m</td>
-                  <td>0.10%</td>
-                  <td>0.20%</td>
-                </tr>
-                <tr>
-                  <td><strong>4:30 PM</strong></td>
-                  <td><span class="cur-badge">USD</span></td>
-                  <td>Core PCE Price Index m/m</td>
-                  <td>0.20%</td>
-                  <td>0.20%</td>
-                </tr>
-                <tr>
-                  <td><strong>5:45 PM</strong></td>
-                  <td><span class="cur-badge">USD</span></td>
-                  <td>Chicago PMI</td>
-                  <td>45.3</td>
-                  <td>45.3</td>
-                </tr>
-                <tr>
-                  <td><strong>6:00 PM</strong></td>
-                  <td><span class="cur-badge">USD</span></td>
-                  <td>U. of Michigan Consumer Sentiment</td>
-                  <td>67.8</td>
-                  <td>67.8</td>
-                </tr>
-                <tr>
-                  <td><strong>6:00 PM</strong></td>
-                  <td><span class="cur-badge">USD</span></td>
-                  <td>U. of Michigan 5-Yr Inflation Exp.</td>
-                  <td>3.00%</td>
-                  <td>3.00%</td>
-                </tr>
-                <tr>
-                  <td><strong>10:30 PM</strong></td>
-                  <td><span class="cur-badge">USD</span></td>
-                  <td>CFTC Gold & Silver Speculative Net</td>
-                  <td>—</td>
-                  <td>Bullish</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="right-panel">
-          <div class="dark-feature-card" style="padding: 12px;">
-            <div class="feature-img-wrapper" style="height: 100%; margin-bottom: 0;">
-              <img src="assets/pamp_fortuna_feature.jpg" alt="PAMP Fortuna Gold Bullion">
-            </div>
-          </div>
-        </div>
+      <div class="ticker-pill silver-ticker">
+        <span class="ticker-dot silver-dot"></span>
+        <span class="ticker-name">XAG/USD:</span>
+        <span class="ticker-price" id="topSilverSpot">$66.755</span>
       </div>
     </div>
 
-    <!-- SLIDE 3: SPOT GOLD (XAU/USD) TECHNICAL MATRIX -->
-    <div class="slide" id="slide-3">
-      <div class="slide-header">
-        <div class="header-left">
-          <div class="slide-title-group">
-            <h1>Spot Gold (XAU/USD) Technical Analysis</h1>
+    <!-- Mode Switcher -->
+    <div class="view-switch-group">
+      <button class="switch-btn active" id="btnViewPdf" onclick="setViewMode('pdf')">
+        <span>📄</span> Live PDF Preview
+      </button>
+      <button class="switch-btn" id="btnViewSlides" onclick="setViewMode('slides')">
+        <span>🖥️</span> Interactive Slides
+      </button>
+    </div>
+
+    <!-- Global Actions -->
+    <div class="header-actions">
+      <button class="btn btn-secondary" onclick="resetToLiveMarket()" title="Refetch live real-time market spot data">
+        <span>🔄</span> Reset Live Spot
+      </button>
+      <button class="btn btn-gold" onclick="generateAndReloadPdf()" title="Rebuild charts & PDF with current state">
+        <span>⚡</span> Rebuild PDF
+      </button>
+      <a href="/download-pdf" class="btn btn-primary" id="btnDownload" target="_blank" download="Lanora_Gold_Daily_Technical_Report.pdf">
+        <span>📥</span> Download PDF
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Workspace (Split Grid) -->
+  <main class="workspace-grid">
+    
+    <!-- LEFT: Main Previewer Stage -->
+    <section class="stage-container">
+
+      <!-- View Container: Live PDF Viewer -->
+      <div class="viewer-pane" id="pdfViewerPane">
+        <div class="viewer-top-toolbar">
+          <div class="doc-info">
+            <span class="doc-badge">16:9 PRESENTATION</span>
+            <span class="doc-title" id="docMetaTitle">Lanora_Gold_Daily_Technical_Report.pdf</span>
+            <span class="doc-status" id="docStatus">● Live Synced</span>
           </div>
-          <span class="header-badge">H4 PRICE GRAPH</span>
+          <div class="doc-actions">
+            <button class="tool-btn" onclick="refreshPdfFrame()" title="Refresh PDF Frame">🔄 Reload Frame</button>
+            <button class="tool-btn" onclick="openPdfNewTab()" title="Open PDF in full browser window">↗ Full Window</button>
+          </div>
         </div>
-        <img src="assets/lanora_logo_badge.jpg" alt="Lanora Logo" class="header-logo-badge">
+
+        <div class="iframe-wrapper">
+          <iframe id="pdfFrame" src="/api/pdf" type="application/pdf"></iframe>
+        </div>
       </div>
 
-      <div class="content-grid-split">
-        <div class="left-panel">
-          <div class="stat-cards-row">
-            <div class="stat-card">
-              <label>CURRENT PRICE</label>
-              <div class="value" id="goldSpotVal">$4,583.40</div>
-            </div>
-            <div class="stat-card pivot-highlight">
-              <label>PIVOT POINT</label>
-              <div class="value" id="goldPivotVal">$4,601.40</div>
-            </div>
-            <div class="stat-card">
-              <label>TARGET (R1)</label>
-              <div class="value" id="goldR1Val">$4,636.63</div>
-            </div>
-          </div>
+      <!-- View Container: Interactive Slide Deck (Hidden by default) -->
+      <div class="viewer-pane hidden" id="slidesViewerPane">
+        <div class="slide-nav-bar">
+          <button class="slide-tab active" onclick="switchSlide(1)">1. Cover Page</button>
+          <button class="slide-tab" onclick="switchSlide(2)">2. Macro Calendar</button>
+          <button class="slide-tab" onclick="switchSlide(3)">3. Gold (XAU) Matrix</button>
+          <button class="slide-tab" onclick="switchSlide(4)">4. Silver (XAG) Matrix</button>
+          <button class="slide-tab" onclick="switchSlide(5)">5. Closing & Desk</button>
+        </div>
 
-          <div class="pivot-matrix-card">
-            <div class="pivot-matrix-header">
-              <div>Support Levels</div>
-              <div>Resistance Levels</div>
-            </div>
-            <div class="pivot-matrix-row">
-              <div class="pivot-level-item"><span class="lbl">S1:</span> <span class="val" id="goldS1">4559.45</span></div>
-              <div class="pivot-level-item"><span class="lbl">R1:</span> <span class="val" id="goldR1">4636.63</span></div>
-            </div>
-            <div class="pivot-matrix-row">
-              <div class="pivot-level-item"><span class="lbl">S2:</span> <span class="val" id="goldS2">4524.22</span></div>
-              <div class="pivot-level-item"><span class="lbl">R2:</span> <span class="val" id="goldR2">4678.58</span></div>
-            </div>
-            <div class="pivot-matrix-row">
-              <div class="pivot-level-item"><span class="lbl">S3:</span> <span class="val" id="goldS3">4482.27</span></div>
-              <div class="pivot-level-item"><span class="lbl">R3:</span> <span class="val" id="goldR3">4713.81</span></div>
-            </div>
-          </div>
-
-          <div class="trade-plans-grid">
-            <div class="trade-plan-card buy-plan">
-              <div class="trade-plan-title">📈 <span id="goldBuyTrigger">Buy Above 4601.40</span></div>
-              <div class="trade-plan-details">
-                Targets: <span id="goldBuyTargets">4636.00 | 4675.00</span><br>
-                Stop Loss: <span id="goldBuySL">4560.00</span>
+        <!-- 16:9 Interactive Deck Viewport -->
+        <div class="deck-viewport" id="deckContent">
+          <!-- Slide 1: Cover -->
+          <div class="slide active" id="slide-1">
+            <div class="slide-header-bar">
+              <div>
+                <h2 class="slide-h1">Precious Metals <span class="gold-text">Technical Report</span></h2>
+                <p class="slide-sub">Daily Pivot Points, Support/Resistance & Trade Strategies</p>
               </div>
+              <img src="assets/lanora_logo_badge.png" class="slide-logo" alt="Logo">
             </div>
-
-            <div class="trade-plan-card sell-plan">
-              <div class="trade-plan-title">📉 <span id="goldSellTrigger">Sell Below 4601.40</span></div>
-              <div class="trade-plan-details">
-                Targets: <span id="goldSellTargets">4560.00 | 4525.00</span><br>
-                Stop Loss: <span id="goldSellSL">4640.00</span>
+            <div class="slide1-split">
+              <div class="meta-card-box">
+                <div class="meta-field">
+                  <label>FIRM NAME</label>
+                  <span id="s1Firm">LANORA GOLD TRADING LLC</span>
+                </div>
+                <div class="meta-field">
+                  <label>REPORT DATE</label>
+                  <span id="s1Date">August 31, 2026</span>
+                </div>
+                <div class="meta-field">
+                  <label>LOCATION</label>
+                  <span id="s1Loc">Dubai, U.A.E.</span>
+                </div>
+                <div class="meta-field">
+                  <label>TRADING DESK</label>
+                  <span>Al Ras, Gold Center</span>
+                </div>
+              </div>
+              <div class="feature-card">
+                <img src="assets/gold_1kg_feature.jpg" alt="1KG Gold Bar" class="feature-img">
+                <div class="feature-caption">
+                  <div class="gold-text font-bold">Hold Real Value In Your Hands</div>
+                  <div class="text-sm text-muted">"Pure value. Timeless Power." — Official 1 Kilo Fine Gold 999.9</div>
+                  <div class="spot-ref-tag">Spot Reference: <strong class="gold-text" id="s1SpotRef">$4,436.00</strong></div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="right-panel">
-          <div class="chart-container-card">
-            <div class="chart-card-header">
-              <h3>XAU/USD, H4 Technical Graph</h3>
-              <span class="date-range">23 Jun - 28 Aug 2026</span>
-            </div>
-            <div class="chart-canvas-wrapper">
-              <canvas id="goldChartCanvas" class="h4-chart"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SLIDE 4: SPOT SILVER (XAG/USD) TECHNICAL MATRIX -->
-    <div class="slide" id="slide-4">
-      <div class="slide-header">
-        <div class="header-left">
-          <div class="slide-title-group">
-            <h1>Spot Silver (XAG/USD) Technical Analysis</h1>
-          </div>
-          <span class="header-badge">H4 PRICE GRAPH</span>
-        </div>
-        <img src="assets/lanora_logo_badge.jpg" alt="Lanora Logo" class="header-logo-badge">
-      </div>
-
-      <div class="content-grid-split">
-        <div class="left-panel">
-          <div class="stat-cards-row" style="grid-template-columns: 1fr 1fr;">
-            <div class="stat-card">
-              <label>CURRENT PRICE</label>
-              <div class="value" id="silverSpotVal">$68.750</div>
-            </div>
-            <div class="stat-card pivot-highlight">
-              <label>PIVOT POINT</label>
-              <div class="value" id="silverPivotVal">$68.595</div>
-            </div>
-          </div>
-
-          <div class="pivot-matrix-card">
-            <div class="pivot-matrix-header">
-              <div>Key Support</div>
-              <div>Key Resistance</div>
-            </div>
-            <div class="pivot-matrix-row">
-              <div class="pivot-level-item"><span class="lbl">S1:</span> <span class="val" id="silverS1">67.560</span></div>
-              <div class="pivot-level-item"><span class="lbl">R1:</span> <span class="val" id="silverR1">69.210</span></div>
-            </div>
-            <div class="pivot-matrix-row">
-              <div class="pivot-level-item"><span class="lbl">S2:</span> <span class="val" id="silverS2">66.945</span></div>
-              <div class="pivot-level-item"><span class="lbl">R2:</span> <span class="val" id="silverR2">70.245</span></div>
-            </div>
-            <div class="pivot-matrix-row">
-              <div class="pivot-level-item"><span class="lbl">S3:</span> <span class="val" id="silverS3">65.910</span></div>
-              <div class="pivot-level-item"><span class="lbl">R3:</span> <span class="val" id="silverR3">70.860</span></div>
-            </div>
-          </div>
-
-          <div class="trade-plans-grid">
-            <div class="trade-plan-card buy-plan">
-              <div class="trade-plan-title">📈 <span id="silverBuyTrigger">Buy Above 68.595</span></div>
-              <div class="trade-plan-details">
-                Targets: <span id="silverBuyTargets">69.200 / 70.200</span> | SL: <span id="silverBuySL">67.500</span>
+          <!-- Slide 2: Calendar -->
+          <div class="slide" id="slide-2">
+            <div class="slide-header-bar">
+              <div>
+                <h2 class="slide-h1">Macro Economic <span class="gold-text">Calendar</span></h2>
+                <p class="slide-sub">Dubai Time (GMT+4) · Key USD & Precious Metals Macro Releases</p>
               </div>
+              <span class="badge-gmt">DUBAI TIME (GMT+4)</span>
             </div>
-
-            <div class="trade-plan-card sell-plan">
-              <div class="trade-plan-title">📉 <span id="silverSellTrigger">Sell Below 68.595</span></div>
-              <div class="trade-plan-details">
-                Targets: <span id="silverSellTargets">67.600 / 66.950</span> | SL: <span id="silverSellSL">69.250</span>
+            <div class="slide2-split">
+              <table class="macro-table" id="macroTable">
+                <thead>
+                  <tr>
+                    <th>Time</th><th>Cur.</th><th>Economic Event</th><th>Forecast</th><th>Previous</th>
+                  </tr>
+                </thead>
+                <tbody id="macroTableBody">
+                  <!-- Injected by JS -->
+                </tbody>
+              </table>
+              <div class="pamp-feature-box">
+                <img src="assets/pamp_fortuna_feature.jpg" alt="PAMP Bullion" class="pamp-img">
+                <div class="pamp-desc">Official PAMP Fortuna Gold Bullion</div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="right-panel">
-          <div class="chart-container-card">
-            <div class="chart-card-header">
-              <h3>XAG/USD, H4 Technical Graph</h3>
-              <span class="date-range">20 Jun - 28 Aug 2026</span>
+          <!-- Slide 3: Gold Matrix -->
+          <div class="slide" id="slide-3">
+            <div class="slide-header-bar">
+              <div>
+                <h2 class="slide-h1">Spot Gold (XAU/USD) <span class="gold-text">Technical Analysis</span></h2>
+                <p class="slide-sub">Floor Pivot Points · Support & Resistance Levels · Intraday Trade Strategy</p>
+              </div>
+              <img src="assets/lanora_logo_badge.png" class="slide-logo" alt="Logo">
             </div>
-            <div class="chart-canvas-wrapper">
-              <canvas id="silverChartCanvas" class="h4-chart"></canvas>
+            <div class="technical-split">
+              <div class="tech-left">
+                <div class="stat-banner">
+                  <div class="stat-block">
+                    <label>CURRENT SPOT</label>
+                    <span class="val-big" id="s3GoldSpot">$4,436.00</span>
+                  </div>
+                  <div class="stat-block highlight-gold">
+                    <label>CENTRAL PIVOT (P)</label>
+                    <span class="val-big gold-text" id="s3GoldPivot">$4,499.16</span>
+                  </div>
+                  <div class="stat-block">
+                    <label>TARGET (R1)</label>
+                    <span class="val-big" id="s3GoldR1">$4,565.83</span>
+                  </div>
+                </div>
+                <div class="sr-matrix-grid">
+                  <div class="sr-col support-col">
+                    <div class="sr-header green-hdr">Support Levels</div>
+                    <div class="sr-row" id="s3GoldS1">S1: 4,432.49</div>
+                    <div class="sr-row" id="s3GoldS2">S2: 4,392.12</div>
+                    <div class="sr-row" id="s3GoldS3">S3: 4,358.42</div>
+                  </div>
+                  <div class="sr-col resistance-col">
+                    <div class="sr-header red-hdr">Resistance Levels</div>
+                    <div class="sr-row" id="s3GoldR1Row">R1: 4,565.83</div>
+                    <div class="sr-row" id="s3GoldR2">R2: 4,672.86</div>
+                    <div class="sr-row" id="s3GoldR3">R3: 4,739.53</div>
+                  </div>
+                </div>
+                <div class="trade-plans">
+                  <div class="plan-card buy-card">
+                    <div class="plan-title green-text" id="s3BuyTitle">📈 Buy Above 4,499.16</div>
+                    <div class="plan-body" id="s3BuyBody">Targets: 4,565.83 | 4,672.86<br>Stop Loss: 4,432.49</div>
+                  </div>
+                  <div class="plan-card sell-card">
+                    <div class="plan-title red-text" id="s3SellTitle">📉 Sell Below 4,499.16</div>
+                    <div class="plan-body" id="s3SellBody">Targets: 4,432.49 | 4,392.12<br>Stop Loss: 4,565.83</div>
+                  </div>
+                </div>
+              </div>
+              <div class="tech-right">
+                <img src="assets/gold_chart.png" id="slideGoldChartImg" alt="Gold Chart" class="tech-chart-img">
+              </div>
+            </div>
+          </div>
+
+          <!-- Slide 4: Silver Matrix -->
+          <div class="slide" id="slide-4">
+            <div class="slide-header-bar">
+              <div>
+                <h2 class="slide-h1">Spot Silver (XAG/USD) <span class="gold-text">Technical Analysis</span></h2>
+                <p class="slide-sub">Floor Pivot Points · Support & Resistance Levels · Intraday Trade Strategy</p>
+              </div>
+              <img src="assets/lanora_logo_badge.png" class="slide-logo" alt="Logo">
+            </div>
+            <div class="technical-split">
+              <div class="tech-left">
+                <div class="stat-banner">
+                  <div class="stat-block">
+                    <label>CURRENT SPOT</label>
+                    <span class="val-big" id="s4SilverSpot">$66.755</span>
+                  </div>
+                  <div class="stat-block highlight-gold">
+                    <label>CENTRAL PIVOT (P)</label>
+                    <span class="val-big gold-text" id="s4SilverPivot">$67.504</span>
+                  </div>
+                  <div class="stat-block">
+                    <label>TARGET (R1)</label>
+                    <span class="val-big" id="s4SilverR1">$69.403</span>
+                  </div>
+                </div>
+                <div class="sr-matrix-grid">
+                  <div class="sr-col support-col">
+                    <div class="sr-header green-hdr">Key Support</div>
+                    <div class="sr-row" id="s4SilverS1">S1: 64.473</div>
+                    <div class="sr-row" id="s4SilverS2">S2: 62.574</div>
+                    <div class="sr-row" id="s4SilverS3">S3: 59.543</div>
+                  </div>
+                  <div class="sr-col resistance-col">
+                    <div class="sr-header red-hdr">Key Resistance</div>
+                    <div class="sr-row" id="s4SilverR1Row">R1: 69.403</div>
+                    <div class="sr-row" id="s4SilverR2">R2: 72.434</div>
+                    <div class="sr-row" id="s4SilverR3">R3: 74.333</div>
+                  </div>
+                </div>
+                <div class="trade-plans">
+                  <div class="plan-card buy-card">
+                    <div class="plan-title green-text" id="s4BuyTitle">📈 Buy Above 67.504</div>
+                    <div class="plan-body" id="s4BuyBody">Targets: 69.403 / 72.434 | SL: 64.473</div>
+                  </div>
+                  <div class="plan-card sell-card">
+                    <div class="plan-title red-text" id="s4SellTitle">📉 Sell Below 67.504</div>
+                    <div class="plan-body" id="s4SellBody">Targets: 64.473 / 62.574 | SL: 69.403</div>
+                  </div>
+                </div>
+              </div>
+              <div class="tech-right">
+                <img src="assets/silver_chart.png" id="slideSilverChartImg" alt="Silver Chart" class="tech-chart-img">
+              </div>
+            </div>
+          </div>
+
+          <!-- Slide 5: Closing -->
+          <div class="slide" id="slide-5">
+            <div class="slide5-hero-centered">
+              <img src="assets/lanora_logo_badge.png" class="hero-logo-large" alt="Lanora Logo">
+              <h1 class="thank-you-title">Thank You</h1>
+              <p class="tagline-quote">"Hold Real Value In Your Hands — Pure Value. Timeless Power."</p>
+              <p class="desk-sub">Lanora Gold Trading LLC — Physical Bullion & Precious Metals Trading Desk</p>
+            </div>
+            <div class="contact-cards-row">
+              <div class="c-card">
+                <div class="c-icon">📍</div>
+                <div class="c-title">Trading Desk Location</div>
+                <div class="c-body">Shop No. 18, Nasser Lootah Bldg.<br>Next to Gold Center, Al Ras, Dubai</div>
+              </div>
+              <div class="c-card">
+                <div class="c-icon">📞</div>
+                <div class="c-title">Direct Phone Lines</div>
+                <div class="c-body" id="s5Phone">04-3215916<br>0505395916</div>
+              </div>
+              <div class="c-card">
+                <div class="c-icon">✉️</div>
+                <div class="c-title">Email & Social Desk</div>
+                <div class="c-body" id="s5Email">lanoragoldtrading@gmail.com<br>@lanoragoldtrading</div>
+              </div>
+            </div>
+            <div class="disclaimer-bar">
+              <strong>Risk Statement & Legal Disclaimer:</strong> Trading physical bullion, precious metals, and spot contracts carries substantial market risk. Technical pivot levels and strategies published herein are for informational and market research purposes only.
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- SLIDE 5: CLOSING & TRADING DESK -->
-    <div class="slide" id="slide-5">
-      <div class="slide-header" style="margin-bottom: 12px;">
-        <div></div>
-        <img src="assets/lanora_logo_badge.jpg" alt="Lanora Logo" class="header-logo-badge">
-      </div>
-
-      <div class="closing-banner">
-        <h2>Thank You</h2>
-        <div class="tagline">"Hold Real Value In Your Hands — Pure Value. Timeless Power."</div>
-        <div class="subtext">Lanora Gold Trading LLC — Physical Bullion & Precious Metals Trading Desk</div>
-      </div>
-
-      <div class="contact-grid">
-        <div class="contact-card">
-          <div class="icon-badge">📍</div>
-          <h4>Trading Desk Location</h4>
-          <p>Shop No. 18, Nasser Lootah Bldg.<br>Next to Gold Center, Al Ras, Dubai, U.A.E.</p>
+      <!-- Bottom Dispatch Station -->
+      <div class="dispatch-toolbar">
+        <!-- Email Dispatch -->
+        <div class="dispatch-box">
+          <div class="dispatch-label">
+            <span class="icon">✉️</span> <strong>Send PDF Report via Email:</strong>
+          </div>
+          <div class="dispatch-input-row">
+            <input type="text" id="emailInput" class="dispatch-input" 
+                   placeholder="Enter email addresses (e.g. anasvanu@gmail.com, client@domain.com)..."
+                   value="anasvanu@gmail.com">
+            <button class="btn btn-primary" id="btnSendEmail" onclick="dispatchEmail()">
+              <span id="emailBtnText">📧 Send Email Report</span>
+            </button>
+          </div>
         </div>
 
-        <div class="contact-card">
-          <div class="icon-badge">📞</div>
-          <h4>Direct Phone Lines</h4>
-          <p>04-3215916<br>0505395916</p>
-        </div>
-
-        <div class="contact-card">
-          <div class="icon-badge">✉️</div>
-          <h4>Email & Social Desk</h4>
-          <p>lanoragoldtrading@gmail.com<br>@lanoragoldtrading</p>
+        <!-- WhatsApp Dispatch -->
+        <div class="dispatch-box">
+          <div class="dispatch-label">
+            <span class="icon">📱</span> <strong>Send WhatsApp Summary:</strong>
+          </div>
+          <div class="dispatch-input-row">
+            <input type="text" id="whatsappInput" class="dispatch-input" 
+                   placeholder="Phone number with country code (e.g. 917012926066)..." 
+                   value="917012926066">
+            <button class="btn btn-secondary" id="btnSendWhatsapp" onclick="dispatchWhatsApp()">
+              <span id="waBtnText">📱 Send WhatsApp</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <div class="disclaimer-card">
-        <strong>Risk Statement & Legal Disclaimer:</strong> Trading physical bullion, precious metals, and spot contracts carries substantial market risk and is not suitable for all investors. The technical pivot levels and strategies published herein are for informational and market research purposes only. Lanora Gold Trading LLC accepts no liability for trading decisions or losses incurred as a result of using this research.
-      </div>
-    </div>
+    </section>
 
-  </div>
+    <!-- RIGHT: AI Prompt Studio Sidebar -->
+    <aside class="ai-studio-sidebar">
+      <div class="studio-header">
+        <div class="studio-title-group">
+          <div class="studio-badge">
+            <span class="pulse-dot"></span> AI PROMPT STUDIO
+          </div>
+          <h3 class="studio-heading">Natural Language Editor</h3>
+        </div>
+        <button class="btn-icon" onclick="clearChatHistory()" title="Clear chat history">🗑️</button>
+      </div>
+
+      <div class="studio-subtext">
+        Type commands in plain English to alter report data, pivot levels, calendar events, or company info in real time.
+      </div>
+
+      <!-- Quick Action Suggestion Chips -->
+      <div class="chip-carousel">
+        <button class="chip" onclick="applyQuickPrompt('Set Gold Spot to 4450')">💰 Gold Spot: 4450</button>
+        <button class="chip" onclick="applyQuickPrompt('Set Gold Pivot to 4460 and recalculate')">📐 Gold Pivot: 4460</button>
+        <button class="chip" onclick="applyQuickPrompt('Add 4:30 PM USD Non-Farm Payrolls forecast 185K previous 160K')">📅 Add NFP Event</button>
+        <button class="chip" onclick="applyQuickPrompt('Set Silver Spot to 67.50')">⚪ Silver Spot: 67.50</button>
+        <button class="chip" onclick="applyQuickPrompt('Set company phone to +971 50 5395916')">📞 Update Phone</button>
+        <button class="chip" onclick="applyQuickPrompt('Reset all data to live spot quotes')">🔄 Reset to Live</button>
+      </div>
+
+      <!-- Chat History Logs -->
+      <div class="chat-viewport" id="chatViewport">
+        <!-- AI Welcome Message -->
+        <div class="chat-bubble ai-bubble">
+          <div class="bubble-header">
+            <span class="bot-tag">LANORA AI</span>
+            <span class="time-tag">Just now</span>
+          </div>
+          <div class="bubble-body">
+            👋 Welcome to the <strong>Lanora AI Market Studio</strong>! You can ask me to modify any aspect of the daily report:
+            <ul>
+              <li><em>"Change gold spot to 4450.00"</em></li>
+              <li><em>"Set gold pivot to 4460 and recalculate S/R"</em></li>
+              <li><em>"Add economic event: 3:30 PM USD CPI m/m forecast 0.3%"</em></li>
+              <li><em>"Change report title to Weekly Bullion Special"</em></li>
+            </ul>
+            Every command instantly recalculates the matrix and updates the PDF preview!
+          </div>
+        </div>
+      </div>
+
+      <!-- Prompt Input Form -->
+      <form class="prompt-form" onsubmit="submitAiPrompt(event)">
+        <div class="prompt-input-container">
+          <textarea id="aiPromptInput" class="prompt-textarea" rows="2" 
+                    placeholder="Type an AI command (e.g. 'Set gold spot to 4455' or 'Add FOMC meeting at 2:00 PM')..."
+                    onkeydown="handlePromptKeydown(event)"></textarea>
+          <button type="submit" class="btn-send-prompt" id="btnSendPrompt">
+            <span>🚀</span>
+          </button>
+        </div>
+        <div class="prompt-helper">
+          Press <kbd>Enter</kbd> to execute · <kbd>Shift+Enter</kbd> for new line
+        </div>
+      </form>
+    </aside>
+
+  </main>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
 
   <script src="app.js"></script>
 </body>

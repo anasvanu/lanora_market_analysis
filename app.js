@@ -1,355 +1,413 @@
-/* Lanora Gold Trading LLC — Deck Application & H4 Canvas Chart Engine */
+/**
+ * Lanora Gold Trading LLC — AI Market Studio Frontend Controller
+ * Handles live PDF streaming, multi-recipient dispatch, and AI Prompt commands.
+ */
 
-let currentSlide = 1;
+let CURRENT_STATE = null;
+let ACTIVE_VIEW_MODE = 'pdf'; // 'pdf' | 'slides'
+let ACTIVE_SLIDE_INDEX = 1;
 
-function switchSlide(n) {
-  currentSlide = n;
-  document.querySelectorAll('.slide').forEach((s, idx) => {
-    s.classList.toggle('active', idx + 1 === n);
-  });
-  document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
-    btn.classList.toggle('active', idx + 1 === n);
-  });
-
-  if (n === 3) drawGoldChart();
-  if (n === 4) drawSilverChart();
-}
-
-// Draw Gold H4 Technical Canvas Graph
-function drawGoldChart() {
-  const canvas = document.getElementById('goldChartCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  
-  // Set resolution
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * 2 || 1000;
-  canvas.height = rect.height * 2 || 700;
-
-  const w = canvas.width;
-  const h = canvas.height;
-
-  ctx.clearRect(0, 0, w, h);
-
-  // Background Grid Lines
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-  ctx.lineWidth = 1;
-
-  const yTicks = [
-    { label: '4643.35', y: h * 0.15 },
-    { label: '4566.15', y: h * 0.35 },
-    { label: '4380.00', y: h * 0.58 },
-    { label: '4200.00', y: h * 0.78 },
-    { label: '4025.00', y: h * 0.92 }
-  ];
-
-  ctx.font = '24px "Trebuchet MS"';
-  ctx.fillStyle = '#64748b';
-  yTicks.forEach(tick => {
-    ctx.beginPath();
-    ctx.moveTo(80, tick.y);
-    ctx.lineTo(w - 20, tick.y);
-    ctx.stroke();
-    ctx.fillText(tick.label, 10, tick.y + 8);
-  });
-
-  // X-Axis Dates
-  const xDates = [
-    { label: '23 Jun', x: w * 0.15 },
-    { label: '8 Jul', x: w * 0.35 },
-    { label: '22 Jul', x: w * 0.55 },
-    { label: '6 Aug', x: w * 0.75 },
-    { label: '28 Aug', x: w * 0.90 }
-  ];
-  xDates.forEach(d => {
-    ctx.fillText(d.label, d.x - 20, h - 15);
-  });
-
-  // Dashed Pivot Line at 4601.40
-  const pivotY = h * 0.28;
-  ctx.save();
-  ctx.setLineDash([12, 8]);
-  ctx.strokeStyle = '#dfb256';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(100, pivotY);
-  ctx.lineTo(w - 30, pivotY);
-  ctx.stroke();
-  ctx.restore();
-
-  ctx.fillStyle = '#dfb256';
-  ctx.font = 'bold 24px "Trebuchet MS"';
-  ctx.fillText('Pivot: 4601.40', w * 0.72, pivotY - 12);
-
-  // Price Curve Points
-  const points = [
-    { x: w * 0.10, y: h * 0.90 },
-    { x: w * 0.20, y: h * 0.88 },
-    { x: w * 0.30, y: h * 0.89 },
-    { x: w * 0.45, y: h * 0.70 },
-    { x: w * 0.60, y: h * 0.45 },
-    { x: w * 0.72, y: h * 0.52 },
-    { x: w * 0.85, y: h * 0.20 },
-    { x: w * 0.90, y: h * 0.32 }
-  ];
-
-  // Area Fill under Curve
-  const fillGradient = ctx.createLinearGradient(0, 0, 0, h);
-  fillGradient.addColorStop(0, 'rgba(223, 178, 86, 0.25)');
-  fillGradient.addColorStop(1, 'rgba(223, 178, 86, 0.0)');
-
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) {
-    const xc = (points[i].x + points[i - 1].x) / 2;
-    const yc = (points[i].y + points[i - 1].y) / 2;
-    ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xc, yc);
-  }
-  ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
-  ctx.lineTo(points[points.length - 1].x, h - 50);
-  ctx.lineTo(points[0].x, h - 50);
-  ctx.closePath();
-  ctx.fillStyle = fillGradient;
-  ctx.fill();
-
-  // Draw Price Line
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) {
-    const xc = (points[i].x + points[i - 1].x) / 2;
-    const yc = (points[i].y + points[i - 1].y) / 2;
-    ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xc, yc);
-  }
-  ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
-  ctx.strokeStyle = '#dfb256';
-  ctx.lineWidth = 6;
-  ctx.shadowColor = 'rgba(223, 178, 86, 0.8)';
-  ctx.shadowBlur = 16;
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-
-  // Spot Dot Marker
-  const lastP = points[points.length - 1];
-  ctx.beginPath();
-  ctx.arc(lastP.x, lastP.y, 14, 0, Math.PI * 2);
-  ctx.fillStyle = '#ef4444';
-  ctx.fill();
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = '#ffffff';
-  ctx.stroke();
-
-  // Spot Price Tag
-  const tagW = 160;
-  const tagH = 44;
-  ctx.fillStyle = '#ef4444';
-  ctx.roundRect(lastP.x - tagW - 10, lastP.y - 22, tagW, tagH, 8);
-  ctx.fill();
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 22px "Trebuchet MS"';
-  ctx.fillText('Spot: 4583.40', lastP.x - tagW, lastP.y + 8);
-}
-
-// Draw Silver H4 Technical Canvas Graph
-function drawSilverChart() {
-  const canvas = document.getElementById('silverChartCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * 2 || 1000;
-  canvas.height = rect.height * 2 || 700;
-
-  const w = canvas.width;
-  const h = canvas.height;
-
-  ctx.clearRect(0, 0, w, h);
-
-  // Background Grid Lines
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-  ctx.lineWidth = 1;
-
-  const yTicks = [
-    { label: '69.630', y: h * 0.15 },
-    { label: '67.980', y: h * 0.35 },
-    { label: '64.500', y: h * 0.58 },
-    { label: '61.000', y: h * 0.78 },
-    { label: '57.500', y: h * 0.92 }
-  ];
-
-  ctx.font = '24px "Trebuchet MS"';
-  ctx.fillStyle = '#64748b';
-  yTicks.forEach(tick => {
-    ctx.beginPath();
-    ctx.moveTo(80, tick.y);
-    ctx.lineTo(w - 20, tick.y);
-    ctx.stroke();
-    ctx.fillText(tick.label, 10, tick.y + 8);
-  });
-
-  // X-Axis Dates
-  const xDates = [
-    { label: '20 Jun', x: w * 0.15 },
-    { label: '7 Jul', x: w * 0.35 },
-    { label: '22 Jul', x: w * 0.55 },
-    { label: '5 Aug', x: w * 0.75 },
-    { label: '28 Aug', x: w * 0.90 }
-  ];
-  xDates.forEach(d => {
-    ctx.fillText(d.label, d.x - 20, h - 15);
-  });
-
-  // Dashed Pivot Line at 68.595
-  const pivotY = h * 0.28;
-  ctx.save();
-  ctx.setLineDash([12, 8]);
-  ctx.strokeStyle = '#dfb256';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(100, pivotY);
-  ctx.lineTo(w - 30, pivotY);
-  ctx.stroke();
-  ctx.restore();
-
-  // Silver Price Curve Points
-  const points = [
-    { x: w * 0.10, y: h * 0.40 },
-    { x: w * 0.20, y: h * 0.65 },
-    { x: w * 0.30, y: h * 0.45 },
-    { x: w * 0.45, y: h * 0.85 },
-    { x: w * 0.60, y: h * 0.70 },
-    { x: w * 0.75, y: h * 0.45 },
-    { x: w * 0.88, y: h * 0.18 },
-    { x: w * 0.90, y: h * 0.26 }
-  ];
-
-  // Area Fill under Curve
-  const fillGradient = ctx.createLinearGradient(0, 0, 0, h);
-  fillGradient.addColorStop(0, 'rgba(56, 189, 248, 0.25)');
-  fillGradient.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
-
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) {
-    const xc = (points[i].x + points[i - 1].x) / 2;
-    const yc = (points[i].y + points[i - 1].y) / 2;
-    ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xc, yc);
-  }
-  ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
-  ctx.lineTo(points[points.length - 1].x, h - 50);
-  ctx.lineTo(points[0].x, h - 50);
-  ctx.closePath();
-  ctx.fillStyle = fillGradient;
-  ctx.fill();
-
-  // Draw Cyan/Blue Price Line
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) {
-    const xc = (points[i].x + points[i - 1].x) / 2;
-    const yc = (points[i].y + points[i - 1].y) / 2;
-    ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xc, yc);
-  }
-  ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 6;
-  ctx.shadowColor = 'rgba(56, 189, 248, 0.8)';
-  ctx.shadowBlur = 16;
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-
-  // Spot Marker
-  const lastP = points[points.length - 1];
-  ctx.beginPath();
-  ctx.arc(lastP.x, lastP.y, 14, 0, Math.PI * 2);
-  ctx.fillStyle = '#0284c7';
-  ctx.fill();
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = '#ffffff';
-  ctx.stroke();
-
-  // Spot Price Tag
-  const tagW = 160;
-  const tagH = 44;
-  ctx.fillStyle = '#0284c7';
-  ctx.roundRect(lastP.x - tagW - 10, lastP.y - 22, tagW, tagH, 8);
-  ctx.fill();
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 22px "Trebuchet MS"';
-  ctx.fillText('Spot: 68.750', lastP.x - tagW, lastP.y + 8);
-}
-
-// Canvas RoundRect Polyfill
-if (!CanvasRenderingContext2D.prototype.roundRect) {
-  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
-    if (w < 2 * r) r = w / 2;
-    if (h < 2 * r) r = h / 2;
-    this.beginPath();
-    this.moveTo(x + r, y);
-    this.arcTo(x + w, y, x + w, y + h, r);
-    this.arcTo(x + w, y + h, x, y + h, r);
-    this.arcTo(x, y + h, x, y, r);
-    this.arcTo(x, y, x + w, y, r);
-    this.closePath();
-    return this;
-  };
-}
-
-// Live Data Refresh
-async function refreshLiveData() {
-  try {
-    const res = await fetch('/api/market-data');
-    if (!res.ok) throw new Error('API request failed');
-    const data = await res.json();
-    
-    document.getElementById('goldSpotCover').textContent = `$${data.gold.spot.toFixed(2)}`;
-    document.getElementById('goldSpotVal').textContent = `$${data.gold.spot.toFixed(2)}`;
-    document.getElementById('goldPivotVal').textContent = `$${data.gold.pivots.P.toFixed(2)}`;
-    document.getElementById('goldR1Val').textContent = `$${data.gold.pivots.R1.toFixed(2)}`;
-    
-    document.getElementById('silverSpotVal').textContent = `$${data.silver.spot.toFixed(3)}`;
-    document.getElementById('silverPivotVal').textContent = `$${data.silver.pivots.P.toFixed(3)}`;
-
-    alert('✅ Live Market Data Refreshed Successfully!');
-  } catch (e) {
-    alert('✅ Market Data Synchronized!');
-  }
-}
-
-// Export Presentation to PDF
-function exportPDF() {
-  const element = document.getElementById('deckContent');
-  
-  // Show all slides for compilation
-  document.querySelectorAll('.slide').forEach(s => s.style.display = 'flex');
-
-  const opt = {
-    margin: 0,
-    filename: `Lanora_Gold_Daily_Technical_Report_${new Date().toISOString().slice(0, 10)}.pdf`,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF: { unit: 'px', format: [1280, 720], orientation: 'landscape' }
-  };
-
-  html2pdf().set(opt).from(element).save().then(() => {
-    switchSlide(currentSlide);
-  });
-}
-
-function triggerEmailDispatch() {
-  alert('✉️ Email Dispatch Initiated to: anasvanu@gmail.com\nSubject: Lanora Gold Trading - Daily Technical Report');
-}
-
-function triggerWhatsAppDispatch() {
-  alert('📱 WhatsApp Payload Dispatch Initiated to: 7012926066');
-}
-
-// Initialize on Load
-window.addEventListener('load', () => {
-  switchSlide(1);
-  window.addEventListener('resize', () => {
-    if (currentSlide === 3) drawGoldChart();
-    if (currentSlide === 4) drawSilverChart();
-  });
+// ==========================================================================
+// Initialization
+// ==========================================================================
+document.addEventListener('DOMContentLoaded', () => {
+  fetchMarketData();
 });
+
+// ==========================================================================
+// View Switcher (PDF Preview vs Interactive Slides)
+// ==========================================================================
+function setViewMode(mode) {
+  ACTIVE_VIEW_MODE = mode;
+  const pdfPane = document.getElementById('pdfViewerPane');
+  const slidesPane = document.getElementById('slidesViewerPane');
+  const btnPdf = document.getElementById('btnViewPdf');
+  const btnSlides = document.getElementById('btnViewSlides');
+
+  if (mode === 'pdf') {
+    pdfPane.classList.remove('hidden');
+    slidesPane.classList.add('hidden');
+    btnPdf.classList.add('active');
+    btnSlides.classList.remove('active');
+  } else {
+    pdfPane.classList.add('hidden');
+    slidesPane.classList.remove('hidden');
+    btnPdf.classList.remove('active');
+    btnSlides.classList.add('active');
+  }
+}
+
+function switchSlide(index) {
+  ACTIVE_SLIDE_INDEX = index;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.slide-tab').forEach(t => t.classList.remove('active'));
+
+  const targetSlide = document.getElementById(`slide-${index}`);
+  if (targetSlide) targetSlide.classList.add('active');
+
+  const tabs = document.querySelectorAll('.slide-tab');
+  if (tabs[index - 1]) tabs[index - 1].classList.add('active');
+}
+
+// ==========================================================================
+// API: Fetch & Sync Market Data State
+// ==========================================================================
+async function fetchMarketData() {
+  try {
+    const res = await fetch('/api/data', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    CURRENT_STATE = await res.json();
+    updateUIWithState(CURRENT_STATE);
+  } catch (err) {
+    console.error('Failed to fetch market data:', err);
+    showToast('Failed to fetch market data from server.', 'error');
+  }
+}
+
+function updateUIWithState(data) {
+  if (!data) return;
+
+  const g = data.gold;
+  const s = data.silver;
+  const meta = data.report_metadata;
+  const co = data.company;
+
+  // Header Tickers
+  const topGold = document.getElementById('topGoldSpot');
+  const topSilver = document.getElementById('topSilverSpot');
+  if (topGold) topGold.textContent = `$${g.spot.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (topSilver) topSilver.textContent = `$${s.spot.toFixed(3)}`;
+
+  // Slide 1: Cover
+  setElemText('s1Firm', co.name);
+  setElemText('s1Date', meta.date);
+  setElemText('s1Loc', co.location);
+  setElemText('s1SpotRef', `$${g.spot.toFixed(2)}`);
+
+  // Slide 2: Macro Calendar
+  const tbody = document.getElementById('macroTableBody');
+  if (tbody && data.macro_calendar) {
+    tbody.innerHTML = data.macro_calendar.map(ev => `
+      <tr>
+        <td><strong>${ev.time}</strong></td>
+        <td><span class="badge-cur">${ev.currency}</span></td>
+        <td>${ev.event}</td>
+        <td><strong>${ev.forecast}</strong></td>
+        <td>${ev.previous}</td>
+      </tr>
+    `).join('');
+  }
+
+  // Slide 3: Gold Matrix
+  setElemText('s3GoldSpot', `$${g.spot.toFixed(2)}`);
+  setElemText('s3GoldPivot', `$${g.pivots.P.toFixed(2)}`);
+  setElemText('s3GoldR1', `$${g.pivots.R1.toFixed(2)}`);
+  setElemText('s3GoldS1', `S1: ${g.pivots.S1.toFixed(2)}`);
+  setElemText('s3GoldS2', `S2: ${g.pivots.S2.toFixed(2)}`);
+  setElemText('s3GoldS3', `S3: ${g.pivots.S3.toFixed(2)}`);
+  setElemText('s3GoldR1Row', `R1: ${g.pivots.R1.toFixed(2)}`);
+  setElemText('s3GoldR2', `R2: ${g.pivots.R2.toFixed(2)}`);
+  setElemText('s3GoldR3', `R3: ${g.pivots.R3.toFixed(2)}`);
+  setElemText('s3BuyTitle', `📈 ${g.trade_plan.buy.trigger}`);
+  setElemText('s3BuyBody', `Targets: ${g.trade_plan.buy.target1} | ${g.trade_plan.buy.target2}\nStop Loss: ${g.trade_plan.buy.stop_loss}`);
+  setElemText('s3SellTitle', `📉 ${g.trade_plan.sell.trigger}`);
+  setElemText('s3SellBody', `Targets: ${g.trade_plan.sell.target1} | ${g.trade_plan.sell.target2}\nStop Loss: ${g.trade_plan.sell.stop_loss}`);
+
+  // Slide 4: Silver Matrix
+  setElemText('s4SilverSpot', `$${s.spot.toFixed(3)}`);
+  setElemText('s4SilverPivot', `$${s.pivots.P.toFixed(3)}`);
+  setElemText('s4SilverR1', `$${s.pivots.R1.toFixed(3)}`);
+  setElemText('s4SilverS1', `S1: ${s.pivots.S1.toFixed(3)}`);
+  setElemText('s4SilverS2', `S2: ${s.pivots.S2.toFixed(3)}`);
+  setElemText('s4SilverS3', `S3: ${s.pivots.S3.toFixed(3)}`);
+  setElemText('s4SilverR1Row', `R1: ${s.pivots.R1.toFixed(3)}`);
+  setElemText('s4SilverR2', `R2: ${s.pivots.R2.toFixed(3)}`);
+  setElemText('s4SilverR3', `R3: ${s.pivots.R3.toFixed(3)}`);
+  setElemText('s4BuyTitle', `📈 ${s.trade_plan.buy.trigger}`);
+  setElemText('s4BuyBody', `Targets: ${s.trade_plan.buy.target1} / ${s.trade_plan.buy.target2} | SL: ${s.trade_plan.buy.stop_loss}`);
+  setElemText('s4SellTitle', `📉 ${s.trade_plan.sell.trigger}`);
+  setElemText('s4SellBody', `Targets: ${s.trade_plan.sell.target1} / ${s.trade_plan.sell.target2} | SL: ${s.trade_plan.sell.stop_loss}`);
+
+  // Slide 5: Closing
+  setElemText('s5Phone', co.phone);
+  setElemText('s5Email', `${co.email}\n${co.social}`);
+
+  // Update chart images with cache buster
+  const gImg = document.getElementById('slideGoldChartImg');
+  if (gImg) gImg.src = `assets/gold_chart.png?t=${Date.now()}`;
+  const sImg = document.getElementById('slideSilverChartImg');
+  if (sImg) sImg.src = `assets/silver_chart.png?t=${Date.now()}`;
+}
+
+function setElemText(id, text) {
+  const elem = document.getElementById(id);
+  if (elem) elem.innerText = text;
+}
+
+// ==========================================================================
+// PDF Management (Reload, Rebuild, Fullscreen)
+// ==========================================================================
+function refreshPdfFrame() {
+  const frame = document.getElementById('pdfFrame');
+  if (frame) {
+    frame.src = `/api/pdf?t=${Date.now()}`;
+    showToast('PDF frame reloaded.', 'info');
+  }
+}
+
+async function generateAndReloadPdf() {
+  showToast('⚡ Rebuilding PDF report with current data...', 'info');
+  try {
+    const res = await fetch('/api/generate-pdf', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      refreshPdfFrame();
+      showToast(`✅ PDF Successfully Generated (${data.timestamp})`, 'success');
+    } else {
+      showToast('⚠️ PDF generation returned an error.', 'error');
+    }
+  } catch (err) {
+    console.error('Error generating PDF:', err);
+    showToast(`Error generating PDF: ${err.message}`, 'error');
+  }
+}
+
+function openPdfNewTab() {
+  window.open(`/api/pdf?t=${Date.now()}`, '_blank');
+}
+
+async function resetToLiveMarket() {
+  showToast('🔄 Refetching live market spot data...', 'info');
+  try {
+    const res = await fetch('/api/reset-data', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      CURRENT_STATE = data.data;
+      updateUIWithState(CURRENT_STATE);
+      refreshPdfFrame();
+      showToast('✅ Reset to live spot quotes successfully!', 'success');
+      appendAiBubble('🔄 Reset all data to live market spot quotes and regenerated the PDF report.');
+    }
+  } catch (err) {
+    showToast('Error resetting to live data.', 'error');
+  }
+}
+
+// ==========================================================================
+// AI Prompt Studio Controller
+// ==========================================================================
+async function submitAiPrompt(event) {
+  if (event) event.preventDefault();
+  const input = document.getElementById('aiPromptInput');
+  const promptText = input.value.trim();
+  if (!promptText) return;
+
+  // Append user bubble
+  appendUserBubble(promptText);
+  input.value = '';
+
+  const btnSend = document.getElementById('btnSendPrompt');
+  if (btnSend) btnSend.disabled = true;
+
+  try {
+    const res = await fetch('/api/ai-command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: jsonStringifySafe({ prompt: promptText })
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      CURRENT_STATE = result.data;
+      updateUIWithState(CURRENT_STATE);
+      refreshPdfFrame();
+      appendAiBubble(result.message);
+      showToast('✨ AI modifications applied to report & PDF!', 'success');
+    } else {
+      appendAiBubble(`⚠️ ${result.error || 'Failed to process command.'}`);
+    }
+  } catch (err) {
+    appendAiBubble(`❌ Error communicating with AI Studio server: ${err.message}`);
+  } finally {
+    if (btnSend) btnSend.disabled = false;
+  }
+}
+
+function handlePromptKeydown(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    submitAiPrompt();
+  }
+}
+
+function applyQuickPrompt(promptText) {
+  const input = document.getElementById('aiPromptInput');
+  if (input) {
+    input.value = promptText;
+    submitAiPrompt();
+  }
+}
+
+function appendUserBubble(text) {
+  const chat = document.getElementById('chatViewport');
+  if (!chat) return;
+
+  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble user-bubble';
+  bubble.innerHTML = `
+    <div class="bubble-header">
+      <span class="user-tag">YOU</span>
+      <span class="time-tag">${timeStr}</span>
+    </div>
+    <div class="bubble-body">${escapeHtml(text)}</div>
+  `;
+  chat.appendChild(bubble);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function appendAiBubble(text) {
+  const chat = document.getElementById('chatViewport');
+  if (!chat) return;
+
+  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formattedHtml = formatAiMarkdown(text);
+
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble ai-bubble';
+  bubble.innerHTML = `
+    <div class="bubble-header">
+      <span class="bot-tag">LANORA AI</span>
+      <span class="time-tag">${timeStr}</span>
+    </div>
+    <div class="bubble-body">${formattedHtml}</div>
+  `;
+  chat.appendChild(bubble);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function clearChatHistory() {
+  const chat = document.getElementById('chatViewport');
+  if (chat) {
+    chat.innerHTML = '';
+    appendAiBubble('🧹 Chat history cleared. Ready for your next command!');
+  }
+}
+
+function formatAiMarkdown(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br>');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function jsonStringifySafe(obj) {
+  return JSON.stringify(obj);
+}
+
+// ==========================================================================
+// Multi-Channel Dispatch (Email & WhatsApp)
+// ==========================================================================
+async function dispatchEmail() {
+  const input = document.getElementById('emailInput');
+  const recipients = input ? input.value.trim() : '';
+  if (!recipients) {
+    showToast('Please enter at least one recipient email address.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnSendEmail');
+  const btnText = document.getElementById('emailBtnText');
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = '⏳ Sending Email...';
+
+  showToast(`📧 Dispatching PDF report to: ${recipients}...`, 'info');
+
+  try {
+    const res = await fetch('/api/dispatch-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipients })
+    });
+    const result = await res.json();
+
+    if (result.status === 'SENT_SMTP_SUCCESS') {
+      showToast(`✅ Email successfully delivered to ${result.count} recipient(s)!`, 'success');
+      appendAiBubble(`📧 **Email Dispatch Confirmed:** Delivered PDF report to **${result.recipients.join(', ')}**.`);
+    } else if (result.status === 'SENT_SIMULATED') {
+      showToast(`ℹ️ Email dispatch logged (Simulated): ${result.recipients.join(', ')}`, 'info');
+      appendAiBubble(`ℹ️ **Email Logged:** ${result.note}\nRecipients: *${result.recipients.join(', ')}*`);
+    } else {
+      showToast(`⚠️ Email dispatch: ${result.error || result.status}`, 'error');
+    }
+  } catch (err) {
+    showToast(`Failed to send email: ${err.message}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = '📧 Send Email Report';
+  }
+}
+
+async function dispatchWhatsApp() {
+  const input = document.getElementById('whatsappInput');
+  const phone = input ? input.value.trim() : '';
+  if (!phone) {
+    showToast('Please enter a WhatsApp phone number.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnSendWhatsapp');
+  const btnText = document.getElementById('waBtnText');
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = '⏳ Sending...';
+
+  showToast(`📱 Dispatching WhatsApp report to ${phone}...`, 'info');
+
+  try {
+    const res = await fetch('/api/dispatch-whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    const result = await res.json();
+
+    if (result.status === 'SENT_WEBHOOK_SUCCESS') {
+      showToast(`✅ WhatsApp message delivered to ${result.phone}!`, 'success');
+      appendAiBubble(`📱 **WhatsApp Dispatch Confirmed:** Sent daily technical summary to **${result.phone}**.`);
+    } else if (result.status === 'SENT_SIMULATED') {
+      showToast(`ℹ️ WhatsApp summary logged for: ${result.phone}`, 'info');
+      appendAiBubble(`📱 **WhatsApp Summary Prepared for ${result.phone}:**\n\`\`\`\n${result.message}\n\`\`\``);
+    } else {
+      showToast(`⚠️ WhatsApp: ${result.error || result.status}`, 'error');
+    }
+  } catch (err) {
+    showToast(`WhatsApp dispatch error: ${err.message}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = '📱 Send WhatsApp';
+  }
+}
+
+// ==========================================================================
+// Toast Notifications
+// ==========================================================================
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<span>${message}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(12px)';
+    toast.style.transition = 'all 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}

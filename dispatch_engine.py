@@ -41,8 +41,9 @@ def build_whatsapp_summary_text(data: dict) -> str:
         f"📞 04-3215916 / 0505395916 | ✉️ {data['company']['email']}"
     )
 
-def send_email_report(pdf_filepath: str, to_email: str = DEFAULT_EMAIL):
-    data = get_market_data()
+def send_email_report(pdf_filepath: str, to_email: str = DEFAULT_EMAIL, data: dict = None):
+    if data is None:
+        data = get_market_data()
     date_str = data['report_metadata']['date']
     subject = f"Lanora Gold Trading - Daily Technical Report [{date_str}]"
 
@@ -85,14 +86,25 @@ def send_email_report(pdf_filepath: str, to_email: str = DEFAULT_EMAIL):
     </html>
     """
 
-    print(f"📧 [EMAIL DISPATCH] Recipient: {to_email}")
+    # Parse recipients list
+    if isinstance(to_email, list):
+        recipients = [e.strip() for e in to_email if e and e.strip()]
+    elif isinstance(to_email, str):
+        recipients = [e.strip() for e in to_email.replace(";", ",").split(",") if e.strip()]
+    else:
+        recipients = [DEFAULT_EMAIL]
+
+    if not recipients:
+        recipients = [DEFAULT_EMAIL]
+
+    print(f"📧 [EMAIL DISPATCH] Recipients: {', '.join(recipients)}")
     print(f"   Subject: {subject}")
 
     if smtp_user and smtp_pass:
         try:
             msg = MIMEMultipart()
             msg['From'] = smtp_user
-            msg['To'] = to_email
+            msg['To'] = ", ".join(recipients)
             msg['Subject'] = subject
             msg.attach(MIMEText(body_html, 'html'))
 
@@ -105,22 +117,25 @@ def send_email_report(pdf_filepath: str, to_email: str = DEFAULT_EMAIL):
             server = smtplib.SMTP(smtp_server, smtp_port)
             server.starttls()
             server.login(smtp_user, smtp_pass)
-            server.sendmail(smtp_user, to_email, msg.as_string())
+            server.sendmail(smtp_user, recipients, msg.as_string())
             server.quit()
-            print("✅ Email successfully sent via SMTP!")
-            return {"status": "SENT_SMTP_SUCCESS", "recipient": to_email}
+            print(f"✅ Email successfully sent via SMTP to {len(recipients)} recipient(s)!")
+            return {"status": "SENT_SMTP_SUCCESS", "recipients": recipients, "count": len(recipients)}
         except Exception as e:
             print(f"⚠️ SMTP Error: {e}. Falling back to simulated log dispatch.")
+            return {"status": "ERROR_SMTP", "error": str(e), "recipients": recipients}
 
     return {
         "status": "SENT_SIMULATED",
-        "recipient": to_email,
+        "recipients": recipients,
         "subject": subject,
-        "attachment": pdf_filepath
+        "attachment": pdf_filepath,
+        "note": "SMTP credentials not provided in environment. Logged simulated dispatch."
     }
 
-def send_whatsapp_report(pdf_filepath: str, phone: str = DEFAULT_WHATSAPP):
-    data = get_market_data()
+def send_whatsapp_report(pdf_filepath: str, phone: str = DEFAULT_WHATSAPP, data: dict = None):
+    if data is None:
+        data = get_market_data()
     summary_text = build_whatsapp_summary_text(data)
     webhook_url = os.getenv("WHATSAPP_WEBHOOK_URL")
 

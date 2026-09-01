@@ -10,9 +10,10 @@ from datetime import datetime
 from market_engine import get_market_data
 from chart_generator import generate_gold_chart, generate_silver_chart
 
-def generate_pdf_report(output_filename="Lanora_Gold_Daily_Technical_Report.pdf"):
+def generate_pdf_report(output_filename="Lanora_Gold_Daily_Technical_Report.pdf", data=None):
     print(f"Generating PDF Technical Report: {output_filename}...")
-    data = get_market_data()
+    if data is None:
+        data = get_market_data()
 
     # Generate dynamic price charts for Gold & Silver
     gold_chart_path = generate_gold_chart(data['gold']['spot'], data['gold']['pivots']['P'], "assets/gold_chart.png")
