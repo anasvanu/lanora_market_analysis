@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lanora Gold Trading LLC — AI Market Studio & PDF Generator</title>
+  <title>Lanora Gold Trading — Daily Technical Report Runner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Trebuchet+MS&display=swap" rel="stylesheet">
@@ -11,400 +11,117 @@
 </head>
 <body>
 
-  <!-- Top App Navigation Header -->
-  <header class="app-header">
-    <div class="brand-section">
-      <img src="assets/lanora_logo_badge.png" alt="Lanora Logo" class="brand-logo">
-      <div class="brand-text">
-        <div class="brand-title">LANORA GOLD TRADING</div>
-        <div class="brand-subtitle">AI Market Analyst Studio · Dubai (GMT+4)</div>
-      </div>
-    </div>
-
-    <!-- Live Spot Ticker -->
-    <div class="live-ticker">
-      <div class="ticker-pill gold-ticker">
-        <span class="ticker-dot"></span>
-        <span class="ticker-name">XAU/USD:</span>
-        <span class="ticker-price" id="topGoldSpot">$4,436.00</span>
-      </div>
-      <div class="ticker-pill silver-ticker">
-        <span class="ticker-dot silver-dot"></span>
-        <span class="ticker-name">XAG/USD:</span>
-        <span class="ticker-price" id="topSilverSpot">$66.755</span>
-      </div>
-    </div>
-
-    <!-- Mode Switcher -->
-    <div class="view-switch-group">
-      <button class="switch-btn active" id="btnViewPdf" onclick="setViewMode('pdf')">
-        <span>📄</span> Live PDF Preview
-      </button>
-      <button class="switch-btn" id="btnViewSlides" onclick="setViewMode('slides')">
-        <span>🖥️</span> Interactive Slides
-      </button>
-    </div>
-
-    <!-- Global Actions -->
-    <div class="header-actions">
-      <button class="btn btn-secondary" onclick="resetToLiveMarket()" title="Refetch live real-time market spot data">
-        <span>🔄</span> Reset Live Spot
-      </button>
-      <button class="btn btn-gold" onclick="generateAndReloadPdf()" title="Rebuild charts & PDF with current state">
-        <span>⚡</span> Rebuild PDF
-      </button>
-      <a href="/download-pdf" class="btn btn-primary" id="btnDownload" target="_blank" download="Lanora_Gold_Daily_Technical_Report.pdf">
-        <span>📥</span> Download PDF
-      </a>
-    </div>
-  </header>
-
-  <!-- Main Workspace (Split Grid) -->
-  <main class="workspace-grid">
+  <!-- Main Container -->
+  <div class="app-container">
     
-    <!-- LEFT: Main Previewer Stage -->
-    <section class="stage-container">
+    <!-- Top Header -->
+    <header class="main-header">
+      <div class="brand-group">
+        <img src="assets/lanora_logo_badge.png" alt="Lanora Logo" class="brand-logo">
+        <div>
+          <h1 class="brand-title">LANORA GOLD TRADING LLC</h1>
+          <p class="brand-subtitle">Daily Technical Market Report Generator · Dubai (GMT+4)</p>
+        </div>
+      </div>
 
-      <!-- View Container: Live PDF Viewer -->
-      <div class="viewer-pane" id="pdfViewerPane">
-        <div class="viewer-top-toolbar">
-          <div class="doc-info">
-            <span class="doc-badge">16:9 PRESENTATION</span>
-            <span class="doc-title" id="docMetaTitle">Lanora_Gold_Daily_Technical_Report.pdf</span>
-            <span class="doc-status" id="docStatus">● Live Synced</span>
+      <div class="header-badges">
+        <div class="badge-pill gold-pill">
+          <span class="dot gold-dot"></span>
+          <span>Spot Gold (XAU): <strong id="valGoldSpot">$4,436.00</strong></span>
+        </div>
+        <div class="badge-pill silver-pill">
+          <span class="dot silver-dot"></span>
+          <span>Spot Silver (XAG): <strong id="valSilverSpot">$66.755</strong></span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Control Console -->
+    <main class="console-wrapper">
+
+      <!-- Action Card -->
+      <section class="control-card">
+        <div class="card-header">
+          <h2>⚡ Report Operations</h2>
+          <span class="status-indicator" id="jobStatusText">● System Ready</span>
+        </div>
+
+        <div class="card-body">
+          <!-- Primary Trigger Buttons -->
+          <div class="action-buttons-row">
+            <button class="btn btn-run" id="btnRunJob" onclick="runReportJob()">
+              <span class="btn-icon">▶</span>
+              <div class="btn-text-group">
+                <span class="btn-main-text">Run Daily Report Job</span>
+                <span class="btn-sub-text">Fetch live spot quotes, calculate pivots & generate PDF</span>
+              </div>
+            </button>
+
+            <a href="/download-pdf" class="btn btn-download" id="btnDownload" target="_blank" download="Lanora_Gold_Daily_Technical_Report.pdf">
+              <span class="btn-icon">📥</span>
+              <div class="btn-text-group">
+                <span class="btn-main-text">Download PDF Report</span>
+                <span class="btn-sub-text">Save 5-page presentation deck</span>
+              </div>
+            </a>
           </div>
-          <div class="doc-actions">
-            <button class="tool-btn" onclick="refreshPdfFrame()" title="Refresh PDF Frame">🔄 Reload Frame</button>
-            <button class="tool-btn" onclick="openPdfNewTab()" title="Open PDF in full browser window">↗ Full Window</button>
+
+          <!-- Email & WhatsApp Dispatch Form -->
+          <div class="dispatch-section">
+            <h3>✉️ Optional Dispatch</h3>
+            <div class="dispatch-grid">
+              <div class="dispatch-col">
+                <label for="emailRecipients">Email Recipients (comma separated):</label>
+                <div class="input-with-btn">
+                  <input type="text" id="emailRecipients" class="form-input" 
+                         placeholder="e.g. anasvanu@gmail.com, client@lanoragold.com"
+                         value="anasvanu@gmail.com">
+                  <button class="btn btn-sm btn-secondary" id="btnMail" onclick="sendMail()">
+                    <span>✉️ Send Email</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="dispatch-col">
+                <label for="waPhone">WhatsApp Phone Number:</label>
+                <div class="input-with-btn">
+                  <input type="text" id="waPhone" class="form-input" 
+                         placeholder="e.g. 917012926066"
+                         value="917012926066">
+                  <button class="btn btn-sm btn-secondary" id="btnWa" onclick="sendWhatsApp()">
+                    <span>📱 Send WhatsApp</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Live PDF Preview Container -->
+      <section class="preview-card">
+        <div class="card-header">
+          <h2>📄 Generated Report Preview</h2>
+          <div class="preview-actions">
+            <button class="btn-text" onclick="reloadPreview()">🔄 Refresh Preview</button>
+            <button class="btn-text" onclick="openFullscreen()">↗ Full Window</button>
           </div>
         </div>
 
-        <div class="iframe-wrapper">
+        <div class="pdf-container">
           <iframe id="pdfFrame" src="/api/pdf" type="application/pdf"></iframe>
         </div>
-      </div>
+      </section>
 
-      <!-- View Container: Interactive Slide Deck (Hidden by default) -->
-      <div class="viewer-pane hidden" id="slidesViewerPane">
-        <div class="slide-nav-bar">
-          <button class="slide-tab active" onclick="switchSlide(1)">1. Cover Page</button>
-          <button class="slide-tab" onclick="switchSlide(2)">2. Macro Calendar</button>
-          <button class="slide-tab" onclick="switchSlide(3)">3. Gold (XAU) Matrix</button>
-          <button class="slide-tab" onclick="switchSlide(4)">4. Silver (XAG) Matrix</button>
-          <button class="slide-tab" onclick="switchSlide(5)">5. Closing & Desk</button>
-        </div>
+    </main>
 
-        <!-- 16:9 Interactive Deck Viewport -->
-        <div class="deck-viewport" id="deckContent">
-          <!-- Slide 1: Cover -->
-          <div class="slide active" id="slide-1">
-            <div class="slide-header-bar">
-              <div>
-                <h2 class="slide-h1">Precious Metals <span class="gold-text">Technical Report</span></h2>
-                <p class="slide-sub">Daily Pivot Points, Support/Resistance & Trade Strategies</p>
-              </div>
-              <img src="assets/lanora_logo_badge.png" class="slide-logo" alt="Logo">
-            </div>
-            <div class="slide1-split">
-              <div class="meta-card-box">
-                <div class="meta-field">
-                  <label>FIRM NAME</label>
-                  <span id="s1Firm">LANORA GOLD TRADING LLC</span>
-                </div>
-                <div class="meta-field">
-                  <label>REPORT DATE</label>
-                  <span id="s1Date">August 31, 2026</span>
-                </div>
-                <div class="meta-field">
-                  <label>LOCATION</label>
-                  <span id="s1Loc">Dubai, U.A.E.</span>
-                </div>
-                <div class="meta-field">
-                  <label>TRADING DESK</label>
-                  <span>Al Ras, Gold Center</span>
-                </div>
-              </div>
-              <div class="feature-card">
-                <img src="assets/gold_1kg_feature.jpg" alt="1KG Gold Bar" class="feature-img">
-                <div class="feature-caption">
-                  <div class="gold-text font-bold">Hold Real Value In Your Hands</div>
-                  <div class="text-sm text-muted">"Pure value. Timeless Power." — Official 1 Kilo Fine Gold 999.9</div>
-                  <div class="spot-ref-tag">Spot Reference: <strong class="gold-text" id="s1SpotRef">$4,436.00</strong></div>
-                </div>
-              </div>
-            </div>
-          </div>
+    <!-- Footer -->
+    <footer class="main-footer">
+      <div>Lanora Gold Trading LLC · Shop No. 18, Nasser Lootah Bldg., Al Ras, Dubai, U.A.E.</div>
+      <div>Tel: 04-3215916 / 0505395916 · lanoragoldtrading@gmail.com</div>
+    </footer>
 
-          <!-- Slide 2: Calendar -->
-          <div class="slide" id="slide-2">
-            <div class="slide-header-bar">
-              <div>
-                <h2 class="slide-h1">Macro Economic <span class="gold-text">Calendar</span></h2>
-                <p class="slide-sub">Dubai Time (GMT+4) · Key USD & Precious Metals Macro Releases</p>
-              </div>
-              <span class="badge-gmt">DUBAI TIME (GMT+4)</span>
-            </div>
-            <div class="slide2-split">
-              <table class="macro-table" id="macroTable">
-                <thead>
-                  <tr>
-                    <th>Time</th><th>Cur.</th><th>Economic Event</th><th>Forecast</th><th>Previous</th>
-                  </tr>
-                </thead>
-                <tbody id="macroTableBody">
-                  <!-- Injected by JS -->
-                </tbody>
-              </table>
-              <div class="pamp-feature-box">
-                <img src="assets/pamp_fortuna_feature.jpg" alt="PAMP Bullion" class="pamp-img">
-                <div class="pamp-desc">Official PAMP Fortuna Gold Bullion</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Slide 3: Gold Matrix -->
-          <div class="slide" id="slide-3">
-            <div class="slide-header-bar">
-              <div>
-                <h2 class="slide-h1">Spot Gold (XAU/USD) <span class="gold-text">Technical Analysis</span></h2>
-                <p class="slide-sub">Floor Pivot Points · Support & Resistance Levels · Intraday Trade Strategy</p>
-              </div>
-              <img src="assets/lanora_logo_badge.png" class="slide-logo" alt="Logo">
-            </div>
-            <div class="technical-split">
-              <div class="tech-left">
-                <div class="stat-banner">
-                  <div class="stat-block">
-                    <label>CURRENT SPOT</label>
-                    <span class="val-big" id="s3GoldSpot">$4,436.00</span>
-                  </div>
-                  <div class="stat-block highlight-gold">
-                    <label>CENTRAL PIVOT (P)</label>
-                    <span class="val-big gold-text" id="s3GoldPivot">$4,499.16</span>
-                  </div>
-                  <div class="stat-block">
-                    <label>TARGET (R1)</label>
-                    <span class="val-big" id="s3GoldR1">$4,565.83</span>
-                  </div>
-                </div>
-                <div class="sr-matrix-grid">
-                  <div class="sr-col support-col">
-                    <div class="sr-header green-hdr">Support Levels</div>
-                    <div class="sr-row" id="s3GoldS1">S1: 4,432.49</div>
-                    <div class="sr-row" id="s3GoldS2">S2: 4,392.12</div>
-                    <div class="sr-row" id="s3GoldS3">S3: 4,358.42</div>
-                  </div>
-                  <div class="sr-col resistance-col">
-                    <div class="sr-header red-hdr">Resistance Levels</div>
-                    <div class="sr-row" id="s3GoldR1Row">R1: 4,565.83</div>
-                    <div class="sr-row" id="s3GoldR2">R2: 4,672.86</div>
-                    <div class="sr-row" id="s3GoldR3">R3: 4,739.53</div>
-                  </div>
-                </div>
-                <div class="trade-plans">
-                  <div class="plan-card buy-card">
-                    <div class="plan-title green-text" id="s3BuyTitle">📈 Buy Above 4,499.16</div>
-                    <div class="plan-body" id="s3BuyBody">Targets: 4,565.83 | 4,672.86<br>Stop Loss: 4,432.49</div>
-                  </div>
-                  <div class="plan-card sell-card">
-                    <div class="plan-title red-text" id="s3SellTitle">📉 Sell Below 4,499.16</div>
-                    <div class="plan-body" id="s3SellBody">Targets: 4,432.49 | 4,392.12<br>Stop Loss: 4,565.83</div>
-                  </div>
-                </div>
-              </div>
-              <div class="tech-right">
-                <img src="assets/gold_chart.png" id="slideGoldChartImg" alt="Gold Chart" class="tech-chart-img">
-              </div>
-            </div>
-          </div>
-
-          <!-- Slide 4: Silver Matrix -->
-          <div class="slide" id="slide-4">
-            <div class="slide-header-bar">
-              <div>
-                <h2 class="slide-h1">Spot Silver (XAG/USD) <span class="gold-text">Technical Analysis</span></h2>
-                <p class="slide-sub">Floor Pivot Points · Support & Resistance Levels · Intraday Trade Strategy</p>
-              </div>
-              <img src="assets/lanora_logo_badge.png" class="slide-logo" alt="Logo">
-            </div>
-            <div class="technical-split">
-              <div class="tech-left">
-                <div class="stat-banner">
-                  <div class="stat-block">
-                    <label>CURRENT SPOT</label>
-                    <span class="val-big" id="s4SilverSpot">$66.755</span>
-                  </div>
-                  <div class="stat-block highlight-gold">
-                    <label>CENTRAL PIVOT (P)</label>
-                    <span class="val-big gold-text" id="s4SilverPivot">$67.504</span>
-                  </div>
-                  <div class="stat-block">
-                    <label>TARGET (R1)</label>
-                    <span class="val-big" id="s4SilverR1">$69.403</span>
-                  </div>
-                </div>
-                <div class="sr-matrix-grid">
-                  <div class="sr-col support-col">
-                    <div class="sr-header green-hdr">Key Support</div>
-                    <div class="sr-row" id="s4SilverS1">S1: 64.473</div>
-                    <div class="sr-row" id="s4SilverS2">S2: 62.574</div>
-                    <div class="sr-row" id="s4SilverS3">S3: 59.543</div>
-                  </div>
-                  <div class="sr-col resistance-col">
-                    <div class="sr-header red-hdr">Key Resistance</div>
-                    <div class="sr-row" id="s4SilverR1Row">R1: 69.403</div>
-                    <div class="sr-row" id="s4SilverR2">R2: 72.434</div>
-                    <div class="sr-row" id="s4SilverR3">R3: 74.333</div>
-                  </div>
-                </div>
-                <div class="trade-plans">
-                  <div class="plan-card buy-card">
-                    <div class="plan-title green-text" id="s4BuyTitle">📈 Buy Above 67.504</div>
-                    <div class="plan-body" id="s4BuyBody">Targets: 69.403 / 72.434 | SL: 64.473</div>
-                  </div>
-                  <div class="plan-card sell-card">
-                    <div class="plan-title red-text" id="s4SellTitle">📉 Sell Below 67.504</div>
-                    <div class="plan-body" id="s4SellBody">Targets: 64.473 / 62.574 | SL: 69.403</div>
-                  </div>
-                </div>
-              </div>
-              <div class="tech-right">
-                <img src="assets/silver_chart.png" id="slideSilverChartImg" alt="Silver Chart" class="tech-chart-img">
-              </div>
-            </div>
-          </div>
-
-          <!-- Slide 5: Closing -->
-          <div class="slide" id="slide-5">
-            <div class="slide5-hero-centered">
-              <img src="assets/lanora_logo_badge.png" class="hero-logo-large" alt="Lanora Logo">
-              <h1 class="thank-you-title">Thank You</h1>
-              <p class="tagline-quote">"Hold Real Value In Your Hands — Pure Value. Timeless Power."</p>
-              <p class="desk-sub">Lanora Gold Trading LLC — Physical Bullion & Precious Metals Trading Desk</p>
-            </div>
-            <div class="contact-cards-row">
-              <div class="c-card">
-                <div class="c-icon">📍</div>
-                <div class="c-title">Trading Desk Location</div>
-                <div class="c-body">Shop No. 18, Nasser Lootah Bldg.<br>Next to Gold Center, Al Ras, Dubai</div>
-              </div>
-              <div class="c-card">
-                <div class="c-icon">📞</div>
-                <div class="c-title">Direct Phone Lines</div>
-                <div class="c-body" id="s5Phone">04-3215916<br>0505395916</div>
-              </div>
-              <div class="c-card">
-                <div class="c-icon">✉️</div>
-                <div class="c-title">Email & Social Desk</div>
-                <div class="c-body" id="s5Email">lanoragoldtrading@gmail.com<br>@lanoragoldtrading</div>
-              </div>
-            </div>
-            <div class="disclaimer-bar">
-              <strong>Risk Statement & Legal Disclaimer:</strong> Trading physical bullion, precious metals, and spot contracts carries substantial market risk. Technical pivot levels and strategies published herein are for informational and market research purposes only.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bottom Dispatch Station -->
-      <div class="dispatch-toolbar">
-        <!-- Email Dispatch -->
-        <div class="dispatch-box">
-          <div class="dispatch-label">
-            <span class="icon">✉️</span> <strong>Send PDF Report via Email:</strong>
-          </div>
-          <div class="dispatch-input-row">
-            <input type="text" id="emailInput" class="dispatch-input" 
-                   placeholder="Enter email addresses (e.g. anasvanu@gmail.com, client@domain.com)..."
-                   value="anasvanu@gmail.com">
-            <button class="btn btn-primary" id="btnSendEmail" onclick="dispatchEmail()">
-              <span id="emailBtnText">📧 Send Email Report</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- WhatsApp Dispatch -->
-        <div class="dispatch-box">
-          <div class="dispatch-label">
-            <span class="icon">📱</span> <strong>Send WhatsApp Summary:</strong>
-          </div>
-          <div class="dispatch-input-row">
-            <input type="text" id="whatsappInput" class="dispatch-input" 
-                   placeholder="Phone number with country code (e.g. 917012926066)..." 
-                   value="917012926066">
-            <button class="btn btn-secondary" id="btnSendWhatsapp" onclick="dispatchWhatsApp()">
-              <span id="waBtnText">📱 Send WhatsApp</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- RIGHT: AI Prompt Studio Sidebar -->
-    <aside class="ai-studio-sidebar">
-      <div class="studio-header">
-        <div class="studio-title-group">
-          <div class="studio-badge">
-            <span class="pulse-dot"></span> AI PROMPT STUDIO
-          </div>
-          <h3 class="studio-heading">Natural Language Editor</h3>
-        </div>
-        <button class="btn-icon" onclick="clearChatHistory()" title="Clear chat history">🗑️</button>
-      </div>
-
-      <div class="studio-subtext">
-        Type commands in plain English to alter report data, pivot levels, calendar events, or company info in real time.
-      </div>
-
-      <!-- Quick Action Suggestion Chips -->
-      <div class="chip-carousel">
-        <button class="chip" onclick="applyQuickPrompt('Set Gold Spot to 4450')">💰 Gold Spot: 4450</button>
-        <button class="chip" onclick="applyQuickPrompt('Set Gold Pivot to 4460 and recalculate')">📐 Gold Pivot: 4460</button>
-        <button class="chip" onclick="applyQuickPrompt('Add 4:30 PM USD Non-Farm Payrolls forecast 185K previous 160K')">📅 Add NFP Event</button>
-        <button class="chip" onclick="applyQuickPrompt('Set Silver Spot to 67.50')">⚪ Silver Spot: 67.50</button>
-        <button class="chip" onclick="applyQuickPrompt('Set company phone to +971 50 5395916')">📞 Update Phone</button>
-        <button class="chip" onclick="applyQuickPrompt('Reset all data to live spot quotes')">🔄 Reset to Live</button>
-      </div>
-
-      <!-- Chat History Logs -->
-      <div class="chat-viewport" id="chatViewport">
-        <!-- AI Welcome Message -->
-        <div class="chat-bubble ai-bubble">
-          <div class="bubble-header">
-            <span class="bot-tag">LANORA AI</span>
-            <span class="time-tag">Just now</span>
-          </div>
-          <div class="bubble-body">
-            👋 Welcome to the <strong>Lanora AI Market Studio</strong>! You can ask me to modify any aspect of the daily report:
-            <ul>
-              <li><em>"Change gold spot to 4450.00"</em></li>
-              <li><em>"Set gold pivot to 4460 and recalculate S/R"</em></li>
-              <li><em>"Add economic event: 3:30 PM USD CPI m/m forecast 0.3%"</em></li>
-              <li><em>"Change report title to Weekly Bullion Special"</em></li>
-            </ul>
-            Every command instantly recalculates the matrix and updates the PDF preview!
-          </div>
-        </div>
-      </div>
-
-      <!-- Prompt Input Form -->
-      <form class="prompt-form" onsubmit="submitAiPrompt(event)">
-        <div class="prompt-input-container">
-          <textarea id="aiPromptInput" class="prompt-textarea" rows="2" 
-                    placeholder="Type an AI command (e.g. 'Set gold spot to 4455' or 'Add FOMC meeting at 2:00 PM')..."
-                    onkeydown="handlePromptKeydown(event)"></textarea>
-          <button type="submit" class="btn-send-prompt" id="btnSendPrompt">
-            <span>🚀</span>
-          </button>
-        </div>
-        <div class="prompt-helper">
-          Press <kbd>Enter</kbd> to execute · <kbd>Shift+Enter</kbd> for new line
-        </div>
-      </form>
-    </aside>
-
-  </main>
+  </div>
 
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
