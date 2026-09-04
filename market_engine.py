@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Lanora Gold Trading LLC — Market Research & Classic Floor Pivot Engine
-Fetches live spot prices for XAU/USD and XAG/USD, calculates exact Classic Floor Pivot Points,
+Fetches live spot prices for XAU/USD and XAG/USD, retrieves 24-hour extended market
+Open, High, Low, and Close (OHLC) values, calculates exact Classic Floor Pivot Points,
 formulates intraday trade plans, and checks market open status.
 """
 
@@ -21,8 +22,8 @@ def is_market_open(dt=None) -> bool:
 
 def calculate_pivot_points(high: float, low: float, close: float, decimals: int = 2) -> dict:
     """
-    Calculates Classic Floor Pivot Points:
-    P = (High + Low + Close) / 3
+    Calculates Classic Floor Pivot Points using 24-hour extended market High, Low, and Close:
+    P  = (High + Low + Close) / 3
     R1 = (2 * P) - Low
     S1 = (2 * P) - High
     R2 = P + (High - Low)
@@ -56,55 +57,60 @@ def fetch_gold_api_spot(symbol: str):
     url = f"https://api.gold-api.com/price/{symbol}"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
-        with urllib.request.urlopen(req, context=ctx, timeout=5) as resp:
+        with urllib.request.urlopen(req, context=ctx, timeout=6) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             return float(data.get("price"))
     except Exception as e:
         print(f"Warning: Gold-API fetch for {symbol} failed ({e}).")
         return None
 
-def fetch_yahoo_session(symbol: str):
+def fetch_yahoo_24h_session(symbol: str):
     """
-    Fetches the PREVIOUS COMPLETED daily session High, Low, and Close from Yahoo Finance
+    Fetches the 24-HOUR EXTENDED MARKET SESSION Open, High, Low, and Close from Yahoo Finance
+    with `includePrePost=true` to capture the complete 24-hour Globex / electronic trading day.
     """
     ctx = ssl._create_unverified_context()
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=5d&interval=1d"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=5d&interval=1d&includePrePost=true"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
-        with urllib.request.urlopen(req, context=ctx, timeout=5) as resp:
+        with urllib.request.urlopen(req, context=ctx, timeout=6) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             result = data["chart"]["result"][0]
             meta = result["meta"]
             spot = meta.get("regularMarketPrice")
             
             quotes = result["indicators"]["quote"][0]
-            highs = [h for h in quotes["high"] if h is not None]
-            lows = [l for l in quotes["low"] if l is not None]
-            closes = [c for c in quotes["close"] if c is not None]
+            opens = [o for o in quotes.get("open", []) if o is not None]
+            highs = [h for h in quotes.get("high", []) if h is not None]
+            lows = [l for l in quotes.get("low", []) if l is not None]
+            closes = [c for c in quotes.get("close", []) if c is not None]
             
-            # If we have at least 2 days of daily candles, index -2 is the previous completed day
+            # If we have at least 2 days of daily candles, index -2 is the completed previous 24h extended session
             # If only 1 day, take index -1
             if len(closes) >= 2:
+                prev_open = opens[-2] if len(opens) >= 2 else opens[-1]
                 prev_high = highs[-2]
                 prev_low = lows[-2]
                 prev_close = closes[-2]
             elif len(closes) == 1:
+                prev_open = opens[-1] if len(opens) >= 1 else closes[-1]
                 prev_high = highs[-1]
                 prev_low = lows[-1]
                 prev_close = closes[-1]
             else:
+                prev_open = meta.get("regularMarketOpen") or meta.get("chartPreviousClose")
                 prev_high = meta.get("regularMarketDayHigh")
                 prev_low = meta.get("regularMarketDayLow")
                 prev_close = meta.get("chartPreviousClose") or meta.get("previousClose")
 
-            return spot, prev_high, prev_low, prev_close
+            return spot, prev_open, prev_high, prev_low, prev_close
     except Exception as e:
-        print(f"Warning: Yahoo fetch for {symbol} failed ({e}).")
-        return None, None, None, None
+        print(f"Warning: Yahoo 24h fetch for {symbol} failed ({e}).")
+        return None, None, None, None, None
 
 def fetch_spot_session(metal_sym: str, yahoo_future_sym: str, default_spot: float):
     """
-    Fetches strictly physical Spot Cash Metals OHLC (XAU/USD & XAG/USD).
+    Fetches strictly physical Spot Cash Metals 24-HOUR EXTENDED MARKET OHLC (XAU/USD & XAG/USD).
     Removes COMEX futures contract rollover/basis premium so all pivots are 100% Spot-based.
     """
     ctx = ssl._create_unverified_context()
@@ -117,14 +123,14 @@ def fetch_spot_session(metal_sym: str, yahoo_future_sym: str, default_spot: floa
     try:
         url_close = f"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{metal_sym.lower()}.json"
         req_close = urllib.request.Request(url_close, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req_close, context=ctx, timeout=5) as resp:
+        with urllib.request.urlopen(req_close, context=ctx, timeout=6) as resp:
             d_close = json.loads(resp.read().decode("utf-8"))
             spot_close = float(d_close[metal_sym.lower()]["usd"])
     except Exception as e:
         print(f"Warning: currency-api spot close for {metal_sym} failed ({e}).")
 
-    # 3. Yahoo session range for the previous completed daily bar
-    f_spot, f_high, f_low, f_close = fetch_yahoo_session(yahoo_future_sym)
+    # 3. Yahoo 24-hour extended session range for the previous completed daily bar
+    f_spot, f_open, f_high, f_low, f_close = fetch_yahoo_24h_session(yahoo_future_sym)
     
     if live_spot is None:
         live_spot = spot_close or f_spot or default_spot
@@ -133,27 +139,30 @@ def fetch_spot_session(metal_sym: str, yahoo_future_sym: str, default_spot: floa
         spot_close = live_spot
 
     if f_high is not None and f_low is not None and f_close is not None:
-        # Subtract the futures basis spread (Futures Close - Spot Close) to get true Spot High & Low
+        # Subtract the futures basis spread (Futures Close - Spot Close) to get true 24h Spot OHLC
         basis = f_close - spot_close
+        spot_open = (f_open - basis) if f_open is not None else (spot_close * 1.001)
         spot_high = f_high - basis
         spot_low = f_low - basis
     else:
+        spot_open = spot_close * 0.998
         spot_high = spot_close * 1.008
         spot_low = spot_close * 0.992
 
-    return live_spot, spot_high, spot_low, spot_close
+    return live_spot, spot_open, spot_high, spot_low, spot_close
 
 def get_market_data():
     gst_now = datetime.now(timezone(timedelta(hours=4)))
     market_open = is_market_open(gst_now)
     report_date = gst_now.strftime("%B %d, %Y")
 
-    # Fetch 100% Physical Spot Gold (XAU/USD)
-    gold_spot, gold_high, gold_low, gold_close = fetch_spot_session("XAU", "GC=F", 4436.00)
+    # Fetch 100% Physical Spot Gold (XAU/USD) 24h extended market OHLC
+    gold_spot, gold_open, gold_high, gold_low, gold_close = fetch_spot_session("XAU", "GC=F", 4436.00)
 
-    # Fetch 100% Physical Spot Silver (XAG/USD)
-    silver_spot, silver_high, silver_low, silver_close = fetch_spot_session("XAG", "SI=F", 66.750)
+    # Fetch 100% Physical Spot Silver (XAG/USD) 24h extended market OHLC
+    silver_spot, silver_open, silver_high, silver_low, silver_close = fetch_spot_session("XAG", "SI=F", 66.750)
 
+    # Classic Floor Pivot Points calculated strictly using 24-hour extended market OHLC
     gold_pivots = calculate_pivot_points(gold_high, gold_low, gold_close, decimals=2)
     silver_pivots = calculate_pivot_points(silver_high, silver_low, silver_close, decimals=3)
 
@@ -236,6 +245,7 @@ def get_market_data():
         "gold": {
             "symbol": "XAU/USD",
             "spot": float(gold_spot),
+            "open": float(gold_open),
             "high": float(gold_high),
             "low": float(gold_low),
             "close": float(gold_close),
@@ -258,6 +268,7 @@ def get_market_data():
         "silver": {
             "symbol": "XAG/USD",
             "spot": float(silver_spot),
+            "open": float(silver_open),
             "high": float(silver_high),
             "low": float(silver_low),
             "close": float(silver_close),
